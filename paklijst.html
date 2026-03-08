@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1a2e">
+<title>Paklijst</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#f5f0e8;min-height:100vh}
+.app{max-width:480px;margin:0 auto;min-height:100vh;background:#faf7f2}
+
+.hdr{background:#1a1a2e;padding:22px 20px 0;position:sticky;top:0;z-index:100}
+.hdr h1{font-family:'Fraunces',serif;font-size:24px;color:#f5e6c8;letter-spacing:-.5px}
+.prog-wrap{margin-top:10px;background:#2d2d45;border-radius:99px;height:5px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,#e8a87c,#d4876a);border-radius:99px;transition:width .4s}
+.prog-txt{font-size:11px;color:#8b7e6a;margin-top:4px;padding-bottom:2px}
+.tabs{display:flex;margin-top:14px;gap:0;border-bottom:2px solid #2d2d45}
+.tab{flex:1;padding:10px 4px;border:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;color:#8b7e6a;border-bottom:2px solid transparent;margin-bottom:-2px}
+.tab.on{color:#f5e6c8;border-bottom-color:#e8a87c}
+
+.slabel{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:1.5px;color:#9b8f7f;padding:16px 20px 8px;display:block}
+.groep-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.8px;color:#c8a87a;padding:14px 14px 5px}
+
+.act-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;padding:0 14px 4px}
+.act-btn{background:#fff;border:1.5px solid #e8dfd4;border-radius:11px;padding:11px 12px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;color:#5c5048;text-align:left;display:flex;align-items:center;gap:7px;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.act-btn:active{background:#fdf5eb;border-color:#c8a87a}
+.act-btn.on{background:#1a1a2e;border-color:#1a1a2e;color:#f5e6c8}
+
+.cat-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 5px}
+.cat-name{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:1.2px;color:#9b8f7f}
+.badge{background:#e8dfd4;border-radius:99px;padding:2px 7px;font-size:11px;color:#7a6e64}
+
+.item-row{display:flex;align-items:center;gap:10px;padding:12px 20px;cursor:pointer;-webkit-tap-highlight-color:transparent;min-height:48px}
+.item-row:active{background:#f0ebe2}
+.item-row.uitgesloten{opacity:.4}
+.item-row.uitgesloten:active{background:transparent}
+
+.cb{width:22px;height:22px;border-radius:6px;border:1.5px solid #c8b8a4;background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .14s}
+.cb.done{background:#2d6a4f;border-color:#2d6a4f}
+.cb-check{color:#fff;font-size:13px;font-weight:700}
+
+.item-naam{font-size:15px;color:#3a322a;flex:1}
+.item-naam.done{color:#aaa098;text-decoration:line-through;text-decoration-color:#c8b8a4}
+.item-naam.uit{color:#b8b0a8}
+
+.extra-pill{font-size:10px;background:#dff0d8;color:#3a7a3a;border-radius:99px;padding:1px 7px;margin-left:5px;font-weight:500}
+
+.ia-wrap{display:flex;gap:4px;flex-shrink:0}
+.ia{background:none;border:none;cursor:pointer;font-size:18px;color:#d4cdc5;padding:4px;border-radius:6px;line-height:1;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
+.ia:active{color:#d4876a}
+.ia.del:active{color:#c04040}
+
+.hr{height:1px;background:#e8dfd4;margin:10px 20px}
+.sectie-label-uit{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:1.5px;color:#c8a87a;padding:14px 20px 4px;display:block}
+
+.empty{text-align:center;padding:56px 30px;color:#9b8f7f}
+.empty .ico{font-size:46px;margin-bottom:14px;opacity:.4}
+.empty p{font-size:14px;line-height:1.65}
+
+.add-sec{padding:14px 20px 20px;border-top:1px solid #e8dfd4;margin-top:8px}
+.add-row{display:flex;gap:7px}
+.add-inp{flex:1;border:1.5px solid #e8dfd4;border-radius:9px;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:15px;color:#3a322a;background:#fff;outline:none}
+.add-inp:focus{border-color:#c8a87a}
+.add-inp::placeholder{color:#b8a896}
+.add-btn{background:#1a1a2e;color:#f5e6c8;border:none;border-radius:9px;padding:10px 16px;font-size:22px;cursor:pointer;line-height:1;min-width:48px;min-height:48px}
+.cat-sel{width:100%;border:1.5px solid #e8dfd4;border-radius:9px;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:15px;color:#3a322a;background:#fff;outline:none;margin-bottom:7px;appearance:none}
+
+.reset-btn{display:block;width:calc(100% - 40px);margin:4px 20px 28px;background:transparent;border:1.5px solid #e8dfd4;border-radius:9px;padding:12px;font-family:'DM Sans',sans-serif;font-size:14px;color:#9b8f7f;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.reset-btn:active{background:#fff0e8;border-color:#d4876a;color:#d4876a}
+
+.inst-info{font-size:13px;color:#7a6e64;padding:0 20px 10px;line-height:1.55}
+.inst-item{display:flex;align-items:center;gap:12px;padding:12px 20px;cursor:pointer;min-height:48px;-webkit-tap-highlight-color:transparent}
+.inst-item:active{background:#f0ebe2}
+.toggle{width:44px;height:26px;border-radius:99px;background:#d5cdc5;position:relative;flex-shrink:0;transition:background .2s}
+.toggle.on{background:#2d6a4f}
+.knob{width:22px;height:22px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.toggle.on .knob{left:20px}
+.inst-naam{font-size:14px;color:#3a322a;flex:1}
+
+.scherm{display:none;padding-bottom:40px}
+.scherm.actief{display:block}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="hdr">
+    <h1>Paklijst ✈️</h1>
+    <div id="prog-wrap" class="prog-wrap" style="display:none">
+      <div id="prog-fill" class="prog-fill" style="width:0%"></div>
+    </div>
+    <p id="prog-txt" class="prog-txt" style="display:none"></p>
+    <div class="tabs">
+      <button class="tab on" onclick="toonScherm('lijst')">🎒 Lijst</button>
+      <button class="tab" id="tab-cat" onclick="toonScherm('categorieen')">🎯 Categorieën</button>
+      <button class="tab" onclick="toonScherm('instellen')">⚙️ Altijd</button>
+    </div>
+  </div>
+
+  <div id="s-lijst" class="scherm actief"></div>
+  <div id="s-categorieen" class="scherm"></div>
+  <div id="s-instellen" class="scherm"></div>
+</div>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const ITEMS = [
+  {id:"e1",cat:"📱 Electronica",naam:"Auto oplader"},
+  {id:"e2",cat:"📱 Electronica",naam:"Boxje"},
+  {id:"e3",cat:"📱 Electronica",naam:"Chromecast"},
+  {id:"e4",cat:"📱 Electronica",naam:"E-Reader"},
+  {id:"e5",cat:"📱 Electronica",naam:"Oortjes"},
+  {id:"e6",cat:"📱 Electronica",naam:"Oplader (Garmin)"},
+  {id:"e7",cat:"📱 Electronica",naam:"Oplader (Micro USB)"},
+  {id:"e8",cat:"📱 Electronica",naam:"Oplader (USB C)"},
+  {id:"e9",cat:"📱 Electronica",naam:"Powerbank"},
+  {id:"e10",cat:"📱 Electronica",naam:"Statief"},
+  {id:"k1",cat:"👗 Kleding",naam:"BHs"},
+  {id:"k2",cat:"👗 Kleding",naam:"Joggingbroek"},
+  {id:"k3",cat:"👗 Kleding",naam:"Outfits"},
+  {id:"k4",cat:"👗 Kleding",naam:"Pyjama"},
+  {id:"k5",cat:"👗 Kleding",naam:"Sloffen"},
+  {id:"k6",cat:"👗 Kleding",naam:"Sokken"},
+  {id:"k7",cat:"👗 Kleding",naam:"Strings"},
+  {id:"t1",cat:"🧴 Toiletartikelen",naam:"Band badjas"},
+  {id:"t2",cat:"🧴 Toiletartikelen",naam:"Bodylotion"},
+  {id:"t3",cat:"🧴 Toiletartikelen",naam:"Borstel"},
+  {id:"t4",cat:"🧴 Toiletartikelen",naam:"Conditioner"},
+  {id:"t5",cat:"🧴 Toiletartikelen",naam:"Crème"},
+  {id:"t6",cat:"🧴 Toiletartikelen",naam:"Deodorant"},
+  {id:"t7",cat:"🧴 Toiletartikelen",naam:"Droogshampoo"},
+  {id:"t8",cat:"🧴 Toiletartikelen",naam:"Elastiek (groot)"},
+  {id:"t9",cat:"🧴 Toiletartikelen",naam:"Elastiek (klein)"},
+  {id:"t10",cat:"🧴 Toiletartikelen",naam:"Elastiek (micro)"},
+  {id:"t11",cat:"🧴 Toiletartikelen",naam:"Facewash"},
+  {id:"t12",cat:"🧴 Toiletartikelen",naam:"Föhnborstel"},
+  {id:"t13",cat:"🧴 Toiletartikelen",naam:"Haarclip"},
+  {id:"t14",cat:"🧴 Toiletartikelen",naam:"Haarklei"},
+  {id:"t15",cat:"🧴 Toiletartikelen",naam:"Handdoek"},
+  {id:"t16",cat:"🧴 Toiletartikelen",naam:"Makeup"},
+  {id:"t17",cat:"🧴 Toiletartikelen",naam:"Makeup remover"},
+  {id:"t18",cat:"🧴 Toiletartikelen",naam:"Nagelvijl"},
+  {id:"t19",cat:"🧴 Toiletartikelen",naam:"Parfum"},
+  {id:"t20",cat:"🧴 Toiletartikelen",naam:"Pincet"},
+  {id:"t21",cat:"🧴 Toiletartikelen",naam:"Prikkers"},
+  {id:"t22",cat:"🧴 Toiletartikelen",naam:"Purol"},
+  {id:"t23",cat:"🧴 Toiletartikelen",naam:"Scheermes"},
+  {id:"t24",cat:"🧴 Toiletartikelen",naam:"Shampoo"},
+  {id:"t25",cat:"🧴 Toiletartikelen",naam:"Stokers"},
+  {id:"t26",cat:"🧴 Toiletartikelen",naam:"Tandenborstel"},
+  {id:"t27",cat:"🧴 Toiletartikelen",naam:"Tandpasta"},
+  {id:"t28",cat:"🧴 Toiletartikelen",naam:"Watjes"},
+  {id:"t29",cat:"🧴 Toiletartikelen",naam:"Wattenstaafjes"},
+  {id:"t30",cat:"🧴 Toiletartikelen",naam:"Zonnebrand"},
+  {id:"s1",cat:"🏅 Sportdingen",naam:"Bikini"},
+  {id:"s2",cat:"🏅 Sportdingen",naam:"Camelbak"},
+  {id:"s3",cat:"🏅 Sportdingen",naam:"Fietshandschoenen"},
+  {id:"s4",cat:"🏅 Sportdingen",naam:"Hardloopschoenen"},
+  {id:"s5",cat:"🏅 Sportdingen",naam:"Helm (fiets)"},
+  {id:"s6",cat:"🏅 Sportdingen",naam:"Korte sportbroek"},
+  {id:"s7",cat:"🏅 Sportdingen",naam:"Legging"},
+  {id:"s8",cat:"🏅 Sportdingen",naam:"Regenjas"},
+  {id:"s9",cat:"🏅 Sportdingen",naam:"Sport BH"},
+  {id:"s10",cat:"🏅 Sportdingen",naam:"Sportshirt"},
+  {id:"s11",cat:"🏅 Sportdingen",naam:"Sportsokken"},
+  {id:"s12",cat:"🏅 Sportdingen",naam:"Sportvestje"},
+  {id:"r1",cat:"🎒 Rest",naam:"Contant geld"},
+  {id:"r2",cat:"🎒 Rest",naam:"Klein tasje"},
+  {id:"r3",cat:"🎒 Rest",naam:"Pasjeshouder"},
+  {id:"r4",cat:"🎒 Rest",naam:"Slaapmasker"},
+  {id:"r5",cat:"🎒 Rest",naam:"Waszakje"},
+  {id:"r6",cat:"🎒 Rest",naam:"Zonnebril"},
+  {id:"h1",cat:"🏡 Harfsen",naam:"Afvalzakken"},
+  {id:"h2",cat:"🏡 Harfsen",naam:"Beddengoed"},
+  {id:"h3",cat:"🏡 Harfsen",naam:"Schoonmaakdingen keuken"},
+  {id:"h4",cat:"🏡 Harfsen",naam:"Sleutels Harfsen"},
+  {id:"h5",cat:"🏡 Harfsen",naam:"Wc papier"},
+  {id:"al1",cat:"🏙️ Almere",naam:"Sleutels Almere"},
+  {id:"bu1",cat:"✈️ Buitenland",naam:"Adapter / stekker"},
+  {id:"bu2",cat:"✈️ Buitenland",naam:"Paspoort"},
+  {id:"sk1",cat:"⛷️ Skiën",naam:"Flask"},
+  {id:"sk2",cat:"⛷️ Skiën",naam:"Handwarmer"},
+  {id:"sk3",cat:"⛷️ Skiën",naam:"Lippen zonnebrand"},
+  {id:"sk4",cat:"⛷️ Skiën",naam:"Muts"},
+  {id:"sk5",cat:"⛷️ Skiën",naam:"Pulli's"},
+  {id:"sk6",cat:"⛷️ Skiën",naam:"Ski-handschoenen"},
+  {id:"sk7",cat:"⛷️ Skiën",naam:"Skibroek"},
+  {id:"sk8",cat:"⛷️ Skiën",naam:"Skijas"},
+  {id:"sk9",cat:"⛷️ Skiën",naam:"Skihelm"},
+  {id:"sk10",cat:"⛷️ Skiën",naam:"Skischoenen"},
+  {id:"sk11",cat:"⛷️ Skiën",naam:"Skisokken"},
+  {id:"sk12",cat:"⛷️ Skiën",naam:"Thermo-ondergoed"},
+  {id:"f1",cat:"🎪 Festival",naam:"Alcohol"},
+  {id:"f2",cat:"🎪 Festival",naam:"Babydoekjes"},
+  {id:"f3",cat:"🎪 Festival",naam:"Caffeïne"},
+  {id:"f4",cat:"🎪 Festival",naam:"Gezichtsteentjes"},
+  {id:"f5",cat:"🎪 Festival",naam:"Gehoorbescherming"},
+  {id:"f6",cat:"🎪 Festival",naam:"Hoedje"},
+  {id:"f7",cat:"🎪 Festival",naam:"Kaarten / dobbelstenen"},
+  {id:"f8",cat:"🎪 Festival",naam:"Kussen"},
+  {id:"f9",cat:"🎪 Festival",naam:"Poncho"},
+  {id:"f10",cat:"🎪 Festival",naam:"Slippers"},
+  {id:"f11",cat:"🎪 Festival",naam:"Slotje"},
+  {id:"f12",cat:"🎪 Festival",naam:"Tape"},
+  {id:"f13",cat:"🎪 Festival",naam:"Vlaggetjes"},
+  {id:"f14",cat:"🎪 Festival",naam:"Waterflesje"},
+  {id:"f15",cat:"🎪 Festival",naam:"Wimperlijm"},
+  {id:"ka1",cat:"🏕️ Kamperen",naam:"Afwasmiddel + sponsje"},
+  {id:"ka2",cat:"🏕️ Kamperen",naam:"Campingstoel"},
+  {id:"ka3",cat:"🏕️ Kamperen",naam:"Gasbrander + gas"},
+  {id:"ka4",cat:"🏕️ Kamperen",naam:"Jerrycan"},
+  {id:"ka5",cat:"🏕️ Kamperen",naam:"Koeltas"},
+  {id:"ka6",cat:"🏕️ Kamperen",naam:"Kookgerei"},
+  {id:"ka7",cat:"🏕️ Kamperen",naam:"Kussen"},
+  {id:"ka8",cat:"🏕️ Kamperen",naam:"Lantaarn / zaklamp"},
+  {id:"ka9",cat:"🏕️ Kamperen",naam:"Matje"},
+  {id:"ka10",cat:"🏕️ Kamperen",naam:"Slaapmatje"},
+  {id:"ka11",cat:"🏕️ Kamperen",naam:"Slaapzak"},
+  {id:"ka12",cat:"🏕️ Kamperen",naam:"Tent"},
+  {id:"m1",cat:"💄 Makeup",naam:"Contour / bronzer"},
+  {id:"m2",cat:"💄 Makeup",naam:"Lipstick / gloss"},
+  {id:"m3",cat:"💄 Makeup",naam:"Makeup gezicht"},
+  {id:"m4",cat:"💄 Makeup",naam:"Makeup kwasten"},
+  {id:"m5",cat:"💄 Makeup",naam:"Mascara"},
+  {id:"m6",cat:"💄 Makeup",naam:"Setting spray"},
+  {id:"w1",cat:"💼 Werken",naam:"Laptop"},
+  {id:"w2",cat:"💼 Werken",naam:"Notitieboek + pen"},
+  {id:"w3",cat:"💼 Werken",naam:"Oplader (Laptop)"},
+];
+
+const EXTRA = {
+  hardlopen:     ["s4","s10","s6","s7","s9","s11","s12","s8"],
+  mountainbiken: ["s2","s5","s3","s11","s10"],
+  festival:      ["f1","f2","f3","f4","f5","f6","f7","f8","f9","f10","f11","f12","f13","f14","f15","t30"],
+  werken:        ["w1","w2","w3"],
+  harfsen:       ["h1","h2","h3","h4","h5"],
+  almere:        ["al1"],
+  buitenland:    ["bu1","bu2"],
+  skien:         ["sk1","sk2","sk3","sk4","sk5","sk6","sk7","sk8","sk9","sk10","sk11","sk12","bu2","t30"],
+  zwemmen:       ["s1","s9","s11","t30"],
+  kamperen:      ["ka1","ka2","ka3","ka4","ka5","ka6","ka7","ka8","ka9","ka10","ka11","ka12"],
+  makeuppen:     ["m1","m2","m3","m4","m5","m6"],
+};
+
+const ACTIVITEITEN = [
+  {id:"almere",label:"Almere",emoji:"🏙️",groep:"Bestemming"},
+  {id:"buitenland",label:"Buitenland",emoji:"✈️",groep:"Bestemming"},
+  {id:"harfsen",label:"Harfsen",emoji:"🏡",groep:"Bestemming"},
+  {id:"festival",label:"Festival",emoji:"🎪",groep:"Activiteit"},
+  {id:"hardlopen",label:"Hardlopen",emoji:"🏃",groep:"Activiteit"},
+  {id:"kamperen",label:"Kamperen",emoji:"🏕️",groep:"Activiteit"},
+  {id:"makeuppen",label:"Makeuppen",emoji:"💄",groep:"Activiteit"},
+  {id:"mountainbiken",label:"Mountainbiken",emoji:"🚵",groep:"Activiteit"},
+  {id:"skien",label:"Skiën",emoji:"⛷️",groep:"Activiteit"},
+  {id:"werken",label:"Werken",emoji:"💼",groep:"Activiteit"},
+  {id:"zwemmen",label:"Zwemmen",emoji:"🏊",groep:"Activiteit"},
+];
+
+const CAT_ORDER = [
+  "📱 Electronica","👗 Kleding","🧴 Toiletartikelen","💄 Makeup",
+  "🏅 Sportdingen","🎒 Rest","🏡 Harfsen","🏙️ Almere","✈️ Buitenland",
+  "⛷️ Skiën","🎪 Festival","🏕️ Kamperen","💼 Werken",
+];
+
+const DEFAULT_ALTIJD = ["e4","e5","e6","e7","e8","e9","k1","k3","k6","k7",
+  "t3","t4","t5","t6","t8","t9","t10","t11","t13","t15","t16","t17","t18",
+  "t19","t20","t21","t22","t24","t25","t26","t27","t28","t29","t30",
+  "r2","r3","r4","r6"];
+
+const ITEM_MAP = Object.fromEntries(ITEMS.map(i => [i.id, i]));
+
+// ─── STATE (met localStorage) ─────────────────────────────────────────────────
+function laad(key, standaard) {
+  try {
+    const v = localStorage.getItem('paklijst_' + key);
+    if (v === null) return standaard;
+    const parsed = JSON.parse(v);
+    // Sets worden als arrays opgeslagen
+    if (standaard instanceof Set) return new Set(parsed);
+    return parsed;
+  } catch(e) { return standaard; }
+}
+
+function sla(key, val) {
+  try {
+    const v = val instanceof Set ? JSON.stringify([...val]) : JSON.stringify(val);
+    localStorage.setItem('paklijst_' + key, v);
+  } catch(e) {}
+}
+
+let altijd    = laad('altijd',     new Set(DEFAULT_ALTIJD));
+let actief    = laad('actief',     []);
+let gepakt    = laad('gepakt',     {});
+let uitgesloten = laad('uitgesloten', new Set());
+let extraItems  = laad('extra',    []);
+let huidigScherm = 'lijst';
+
+function bewaar() {
+  sla('altijd', altijd);
+  sla('actief', actief);
+  sla('gepakt', gepakt);
+  sla('uitgesloten', uitgesloten);
+  sla('extra', extraItems);
+}
+
+// ─── BEREKENINGEN ─────────────────────────────────────────────────────────────
+function berekenZichtbaar() {
+  const ids = new Set(altijd);
+  actief.forEach(a => (EXTRA[a] || []).forEach(id => ids.add(id)));
+  const items = [...ids].map(id => ITEM_MAP[id]).filter(Boolean);
+  return [...items, ...extraItems];
+}
+
+function berekenExtraIds() {
+  const extra = new Set();
+  actief.forEach(a => (EXTRA[a]||[]).forEach(id => { if (!altijd.has(id)) extra.add(id); }));
+  return extra;
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function render() {
+  bewaar();
+  renderHeader();
+  if (huidigScherm === 'lijst') renderLijst();
+  else if (huidigScherm === 'categorieen') renderCategorieen();
+  else if (huidigScherm === 'instellen') renderInstellen();
+}
+
+function renderHeader() {
+  const alle = berekenZichtbaar();
+  const actieveItems = alle.filter(i => !uitgesloten.has(i.id));
+  const totaal = actieveItems.length;
+  const gedaan = actieveItems.filter(i => gepakt[i.id]).length;
+
+  const pw = document.getElementById('prog-wrap');
+  const pf = document.getElementById('prog-fill');
+  const pt = document.getElementById('prog-txt');
+  if (totaal > 0) {
+    pw.style.display = 'block';
+    pt.style.display = 'block';
+    pf.style.width = (gedaan/totaal*100) + '%';
+    pt.textContent = gedaan + ' van ' + totaal + ' ingepakt';
+  } else {
+    pw.style.display = 'none';
+    pt.style.display = 'none';
+  }
+
+  // Tab badge
+  const tabCat = document.getElementById('tab-cat');
+  tabCat.textContent = '🎯 Categorieën' + (actief.length > 0 ? ` (${actief.length})` : '');
+
+  // Actieve tab highlight
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const namen = ['lijst','categorieen','instellen'];
+    t.classList.toggle('on', namen[i] === huidigScherm);
+  });
+}
+
+function renderLijst() {
+  const el = document.getElementById('s-lijst');
+  const alle = berekenZichtbaar();
+  const extraIds = berekenExtraIds();
+  const actieveItems = alle.filter(i => !uitgesloten.has(i.id));
+  const uitgesloteneItems = alle.filter(i => uitgesloten.has(i.id));
+
+  if (alle.length === 0) {
+    el.innerHTML = `<div class="empty"><div class="ico">🎒</div><p>Stel je altijd-items in via <strong>⚙️ Altijd</strong><br>of kies iets via <strong>🎯 Categorieën</strong>.</p></div>`;
+    return;
+  }
+
+  // Groepeer actieve items
+  const groepen = {};
+  actieveItems.forEach(item => {
+    if (!groepen[item.cat]) groepen[item.cat] = [];
+    groepen[item.cat].push(item);
+  });
+
+  let html = '';
+
+  CAT_ORDER.filter(c => groepen[c]).forEach(cat => {
+    const items = groepen[cat];
+    const gedaan = items.filter(i => gepakt[i.id]).length;
+    html += `<div class="cat-hdr"><span class="cat-name">${cat}</span><span class="badge">${gedaan}/${items.length}</span></div>`;
+    items.forEach(item => { html += itemHtml(item, false, extraIds); });
+  });
+
+  // Uitgesloten onderaan
+  if (uitgesloteneItems.length > 0) {
+    html += `<div class="hr"></div><span class="sectie-label-uit">⛔ Overgeslagen (${uitgesloteneItems.length})</span>`;
+    uitgesloteneItems.forEach(item => { html += itemHtml(item, true, extraIds); });
+  }
+
+  // Toevoegen
+  const catOpties = CAT_ORDER.map(c => `<option value="${c}">${c}</option>`).join('');
+  html += `
+    <div class="add-sec">
+      <span class="slabel" style="padding:0 0 8px">Iets toevoegen</span>
+      <select class="cat-sel" id="nieuw-cat">${catOpties}</select>
+      <div class="add-row">
+        <input class="add-inp" id="nieuw-naam" placeholder="Naam van item...">
+        <button class="add-btn" onclick="voegToe()">+</button>
+      </div>
+    </div>
+    <button class="reset-btn" onclick="resetAlles()">Opnieuw beginnen 🔄</button>`;
+
+  el.innerHTML = html;
+
+  // Restore cat selectie
+  const catSel = document.getElementById('nieuw-cat');
+  if (catSel) catSel.value = window._nieuwCat || '🎒 Rest';
+  const naamInp = document.getElementById('nieuw-naam');
+  if (naamInp) naamInp.addEventListener('keydown', e => { if(e.key==='Enter') voegToe(); });
+}
+
+function itemHtml(item, isUit, extraIds) {
+  const isDone = gepakt[item.id] && !isUit;
+  const isExtra = extraIds.has(item.id);
+  const isCustom = item.id.startsWith('c_');
+  const extraPill = (isExtra && !isCustom) ? `<span class="extra-pill">+extra</span>` : '';
+  const delBtn = isCustom ? `<button class="ia del" onclick="verwijder(event,'${item.id}')">×</button>` : '';
+  return `
+    <div class="item-row${isUit?' uitgesloten':''}" onclick="${isUit?'':''}" data-id="${item.id}" data-uit="${isUit}">
+      <div class="cb${isDone?' done':''}">${isDone?'<span class="cb-check">✓</span>':''}</div>
+      <span class="item-naam${isDone?' done':''}${isUit?' uit':''}">${item.naam}${extraPill}</span>
+      <div class="ia-wrap">
+        <button class="ia" onclick="toggleUit(event,'${item.id}')">${isUit?'↩️':'🚫'}</button>
+        ${delBtn}
+      </div>
+    </div>`;
+}
+
+function renderCategorieen() {
+  const el = document.getElementById('s-categorieen');
+  const plaatsen = ACTIVITEITEN.filter(a => a.groep === 'Bestemming');
+  const acts = ACTIVITEITEN.filter(a => a.groep === 'Activiteit');
+
+  const btnHtml = arr => arr.map(a =>
+    `<button class="act-btn${actief.includes(a.id)?' on':''}" onclick="toggleActief('${a.id}')">
+      <span>${a.emoji}</span><span>${a.label}</span>
+    </button>`).join('');
+
+  const wisBtn = actief.length > 0
+    ? `<div style="padding:12px 14px 0"><button class="reset-btn" style="margin:0;width:100%" onclick="wisSelectie()">Selectie wissen ✕</button></div>`
+    : '';
+
+  el.innerHTML = `
+    <div class="groep-label">📍 Bestemming</div>
+    <div class="act-grid">${btnHtml(plaatsen)}</div>
+    <div class="groep-label" style="padding-top:10px">🎯 Activiteit</div>
+    <div class="act-grid" style="padding-bottom:8px">${btnHtml(acts)}</div>
+    ${wisBtn}`;
+}
+
+function renderInstellen() {
+  const el = document.getElementById('s-instellen');
+  let html = `<span class="slabel">Wat staat er altijd op je lijst?</span>
+    <p class="inst-info">Deze items verschijnen altijd, ongeacht wat je gaat doen. Categorieën voegen daar extra items bovenop toe.</p>`;
+
+  const groepen = {};
+  ITEMS.forEach(item => {
+    if (!groepen[item.cat]) groepen[item.cat] = [];
+    groepen[item.cat].push(item);
+  });
+
+  CAT_ORDER.filter(c => groepen[c]).forEach(cat => {
+    html += `<span class="slabel" style="padding-top:12px">${cat}</span>`;
+    groepen[cat].forEach(item => {
+      html += `
+        <div class="inst-item" onclick="toggleAltijd('${item.id}')">
+          <div class="toggle${altijd.has(item.id)?' on':''}"><div class="knob"></div></div>
+          <span class="inst-naam">${item.naam}</span>
+        </div>`;
+    });
+  });
+
+  el.innerHTML = html;
+}
+
+// ─── ACTIES ───────────────────────────────────────────────────────────────────
+function toonScherm(naam) {
+  huidigScherm = naam;
+  document.querySelectorAll('.scherm').forEach(s => s.classList.remove('actief'));
+  document.getElementById('s-' + naam).classList.add('actief');
+  render();
+}
+
+function toggleGepakt(id) {
+  gepakt[id] = !gepakt[id];
+  render();
+}
+
+function toggleUit(e, id) {
+  e.stopPropagation();
+  if (uitgesloten.has(id)) uitgesloten.delete(id);
+  else uitgesloten.add(id);
+  render();
+}
+
+function toggleAltijd(id) {
+  if (altijd.has(id)) altijd.delete(id);
+  else altijd.add(id);
+  render();
+}
+
+function toggleActief(id) {
+  const idx = actief.indexOf(id);
+  if (idx >= 0) actief.splice(idx, 1);
+  else actief.push(id);
+  render();
+}
+
+function wisSelectie() {
+  actief = [];
+  render();
+}
+
+function voegToe() {
+  const naam = document.getElementById('nieuw-naam').value.trim();
+  const cat = document.getElementById('nieuw-cat').value;
+  window._nieuwCat = cat;
+  if (!naam) return;
+  extraItems.push({id: 'c_' + Date.now(), cat, naam});
+  render();
+}
+
+function verwijder(e, id) {
+  e.stopPropagation();
+  extraItems = extraItems.filter(i => i.id !== id);
+  render();
+}
+
+function resetAlles() {
+  gepakt = {};
+  uitgesloten = new Set();
+  actief = [];
+  render();
+}
+
+// Klik op item-row afhandelen via event delegation
+document.addEventListener('click', e => {
+  const row = e.target.closest('.item-row');
+  if (!row) return;
+  if (e.target.closest('.ia')) return; // knopjes zelf afhandelen
+  if (row.dataset.uit === 'true') return;
+  toggleGepakt(row.dataset.id);
+});
+
+// ─── START ────────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
