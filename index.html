@@ -410,4 +410,207 @@ function renderLijst() {
   // Uitgesloten onderaan
   if (uitgesloteneItems.length > 0) {
     html += `<div class="hr"></div><span class="sectie-label-uit">⛔ Overgeslagen (${uitgesloteneItems.length})</span>`;
-    uitgesloteneItems.forEach(item => { html += itemHtml(item, true, extraIds
+    uitgesloteneItems.forEach(item => { html += itemHtml(item, true, extraIds); });
+  }
+
+  // Toevoegen
+  const catOpties = CAT_ORDER.map(c => `<option value="${c}">${c}</option>`).join('');
+  html += `
+    <div class="add-sec">
+      <span class="slabel" style="padding:0 0 8px">Iets toevoegen</span>
+      <select class="cat-sel" id="nieuw-cat">${catOpties}</select>
+      <div class="add-row">
+        <input class="add-inp" id="nieuw-naam" placeholder="Naam van item...">
+        <button class="add-btn" onclick="voegToe()">+</button>
+      </div>
+    </div>
+    <button class="reset-btn" onclick="resetAlles()">Opnieuw beginnen 🔄</button>`;
+
+  el.innerHTML = html;
+
+  // Restore cat selectie
+  const catSel = document.getElementById('nieuw-cat');
+  if (catSel) catSel.value = window._nieuwCat || '🎒 Rest';
+  const naamInp = document.getElementById('nieuw-naam');
+  if (naamInp) naamInp.addEventListener('keydown', e => { if(e.key==='Enter') voegToe(); });
+}
+
+function itemHtml(item, isUit, extraIds) {
+  const isDone = gepakt[item.id] && !isUit;
+  const isExtra = extraIds.has(item.id);
+  const isCustom = item.id.startsWith('c_');
+  const extraPill = '';
+  const delBtn = isCustom ? `<button class="ia del" onclick="verwijder(event,'${item.id}')">×</button>` : '';
+  return `
+    <div class="item-row${isUit?' uitgesloten':''}" onclick="${isUit?'':''}" data-id="${item.id}" data-uit="${isUit}">
+      <div class="cb${isDone?' done':''}">${isDone?'<span class="cb-check">✓</span>':''}</div>
+      <span class="item-naam${isDone?' done':''}${isUit?' uit':''}">${item.naam}${extraPill}</span>
+      <div class="ia-wrap">
+        <button class="ia" onclick="toggleUit(event,'${item.id}')">${isUit?'↩️':'🚫'}</button>
+        ${delBtn}
+      </div>
+    </div>`;
+}
+
+function renderCategorieen() {
+  const el = document.getElementById('s-categorieen');
+  const plaatsen = ACTIVITEITEN.filter(a => a.groep === 'Bestemming');
+  const acts = ACTIVITEITEN.filter(a => a.groep === 'Activiteit');
+
+  const btnHtml = arr => arr.map(a =>
+    `<button class="act-btn${actief.includes(a.id)?' on':''}" onclick="toggleActief('${a.id}')">
+      <span>${a.emoji}</span><span>${a.label}</span>
+    </button>`).join('');
+
+  const wisBtn = actief.length > 0
+    ? `<div style="padding:12px 14px 0"><button class="reset-btn" style="margin:0;width:100%" onclick="wisSelectie()">Selectie wissen ✕</button></div>`
+    : '';
+
+  el.innerHTML = `
+    <div class="groep-label">📍 Bestemming</div>
+    <div class="act-grid">${btnHtml(plaatsen)}</div>
+    <div class="groep-label" style="padding-top:10px">🎯 Activiteit</div>
+    <div class="act-grid" style="padding-bottom:8px">${btnHtml(acts)}</div>
+    ${wisBtn}`;
+}
+
+function renderInstellen() {
+  const el = document.getElementById('s-instellen');
+  let html = `<span class="slabel">Wat staat er altijd op je lijst?</span>
+    <p class="inst-info">Deze items verschijnen altijd, ongeacht wat je gaat doen. Categorieën voegen daar extra items bovenop toe.</p>`;
+
+  const groepen = {};
+  ITEMS.forEach(item => {
+    if (!groepen[item.cat]) groepen[item.cat] = [];
+    groepen[item.cat].push(item);
+  });
+
+  // Voeg ook altijd-extra items toe aan hun categorie
+  altijdExtra.forEach(item => {
+    if (!groepen[item.cat]) groepen[item.cat] = [];
+    groepen[item.cat].push(item);
+  });
+
+  CAT_ORDER.filter(c => groepen[c]).forEach(cat => {
+    html += `<span class="slabel" style="padding-top:12px">${cat}</span>`;
+    groepen[cat].forEach(item => {
+      const isCustom = item.id.startsWith('ca_');
+      const delBtn = isCustom ? `<button class="ia del" style="margin-left:auto" onclick="verwijderAltijdExtra(event,'${item.id}')">×</button>` : '';
+      html += `
+        <div class="inst-item" onclick="toggleAltijd('${item.id}')">
+          <div class="toggle${altijd.has(item.id)?' on':''}"><div class="knob"></div></div>
+          <span class="inst-naam">${item.naam}</span>
+          ${delBtn}
+        </div>`;
+    });
+  });
+
+  // Toevoegen onderaan
+  const catOpties = CAT_ORDER.map(c => `<option value="${c}">${c}</option>`).join('');
+  html += `
+    <div class="add-sec" style="margin-top:8px">
+      <span class="slabel" style="padding:0 0 8px;display:block">Item toevoegen aan altijd-lijst</span>
+      <select class="cat-sel" id="altijd-cat">${catOpties}</select>
+      <div class="add-row">
+        <input class="add-inp" id="altijd-naam" placeholder="Naam van item...">
+        <button class="add-btn" onclick="voegAltijdToe()">+</button>
+      </div>
+    </div>`;
+
+  el.innerHTML = html;
+
+  const inp = document.getElementById('altijd-naam');
+  if (inp) inp.addEventListener('keydown', e => { if(e.key==='Enter') voegAltijdToe(); });
+}
+
+// ─── ACTIES ───────────────────────────────────────────────────────────────────
+function toonScherm(naam) {
+  huidigScherm = naam;
+  document.querySelectorAll('.scherm').forEach(s => s.classList.remove('actief'));
+  document.getElementById('s-' + naam).classList.add('actief');
+  render();
+}
+
+function toggleGepakt(id) {
+  gepakt[id] = !gepakt[id];
+  render();
+}
+
+function toggleUit(e, id) {
+  e.stopPropagation();
+  if (uitgesloten.has(id)) uitgesloten.delete(id);
+  else uitgesloten.add(id);
+  render();
+}
+
+function toggleAltijd(id) {
+  if (altijd.has(id)) altijd.delete(id);
+  else altijd.add(id);
+  render();
+}
+
+function toggleActief(id) {
+  const idx = actief.indexOf(id);
+  if (idx >= 0) actief.splice(idx, 1);
+  else actief.push(id);
+  render();
+}
+
+function wisSelectie() {
+  actief = [];
+  render();
+}
+
+function voegToe() {
+  const naam = document.getElementById('nieuw-naam').value.trim();
+  const cat = document.getElementById('nieuw-cat').value;
+  window._nieuwCat = cat;
+  if (!naam) return;
+  extraItems.push({id: 'c_' + Date.now(), cat, naam});
+  render();
+}
+
+function verwijder(e, id) {
+  e.stopPropagation();
+  extraItems = extraItems.filter(i => i.id !== id);
+  render();
+}
+
+function voegAltijdToe() {
+  const naam = document.getElementById('altijd-naam').value.trim();
+  const cat = document.getElementById('altijd-cat').value;
+  if (!naam) return;
+  const id = 'ca_' + Date.now();
+  altijdExtra.push({id, cat, naam});
+  altijd.add(id);
+  render();
+}
+
+function verwijderAltijdExtra(e, id) {
+  e.stopPropagation();
+  altijdExtra = altijdExtra.filter(i => i.id !== id);
+  altijd.delete(id);
+  render();
+}
+
+function resetAlles() {
+  gepakt = {};
+  uitgesloten = new Set();
+  actief = [];
+  render();
+}
+
+// Klik op item-row afhandelen via event delegation
+document.addEventListener('click', e => {
+  const row = e.target.closest('.item-row');
+  if (!row) return;
+  if (e.target.closest('.ia')) return; // knopjes zelf afhandelen
+  if (row.dataset.uit === 'true') return;
+  toggleGepakt(row.dataset.id);
+});
+
+// ─── START ────────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
