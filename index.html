@@ -58,6 +58,7 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;min-height:100vh}
 .ia{background:none;border:none;cursor:pointer;font-size:18px;color:#d4cdc5;padding:4px;border-radius:6px;line-height:1;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
 .ia:active{color:#d4876a}
 .ia.del:active{color:#c04040}
+.ia.terugzet:active{color:#2d6a4f}
 
 .hr{height:1px;background:#e8dfd4;margin:10px 20px}
 .sectie-label-uit{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:1.5px;color:#c8a87a;padding:14px 20px 4px;display:block}
@@ -437,17 +438,20 @@ function renderLijst() {
 
 function itemHtml(item, isUit, extraIds) {
   const isDone = gepakt[item.id] && !isUit;
-  const isExtra = extraIds.has(item.id);
-  const isCustom = item.id.startsWith('c_');
-  const extraPill = '';
-  const delBtn = isCustom ? `<button class="ia del" onclick="verwijder(event,'${item.id}')">×</button>` : '';
+  const isCustom = item.id.startsWith('c_') || item.id.startsWith('ca_');
+  // × op uitgesloten items: terugzetten (↩ gedrag maar dan als ×)
+  // × op normale items: verwijderen als custom, overslaan als standaard
+  const actie = isUit
+    ? `toggleUit(event,'${item.id}')`
+    : isCustom
+      ? `verwijder(event,'${item.id}')`
+      : `toggleUit(event,'${item.id}')`;
   return `
-    <div class="item-row${isUit?' uitgesloten':''}" onclick="${isUit?'':''}" data-id="${item.id}" data-uit="${isUit}">
+    <div class="item-row${isUit?' uitgesloten':''}" data-id="${item.id}" data-uit="${isUit}">
       <div class="cb${isDone?' done':''}">${isDone?'<span class="cb-check">✓</span>':''}</div>
-      <span class="item-naam${isDone?' done':''}${isUit?' uit':''}">${item.naam}${extraPill}</span>
+      <span class="item-naam${isDone?' done':''}${isUit?' uit':''}">${item.naam}</span>
       <div class="ia-wrap">
-        <button class="ia" onclick="toggleUit(event,'${item.id}')">${isUit?'↩️':'🚫'}</button>
-        ${delBtn}
+        <button class="ia${isUit?' terugzet':' del'}" onclick="${actie}">${isUit?'↩️':'×'}</button>
       </div>
     </div>`;
 }
