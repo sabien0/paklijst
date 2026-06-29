@@ -59,6 +59,19 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;min-height:100vh}
 .ia:active{color:#d4876a}
 .ia.del:active{color:#c04040}
 .ia.terugzet:active{color:#2d6a4f}
+.zoek-wrap{padding:10px 14px 4px;position:sticky;top:0;background:#faf7f2;z-index:50;border-bottom:1px solid #e8dfd4}
+.zoek-inp{width:100%;border:1.5px solid #e8dfd4;border-radius:9px;padding:10px 36px 10px 14px;font-family:'DM Sans',sans-serif;font-size:15px;color:#3a322a;background:#fff;outline:none;-webkit-appearance:none}
+.zoek-inp:focus{border-color:#c8a87a}
+.zoek-inp::placeholder{color:#b8a896}
+.zoek-clear{position:absolute;right:24px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;color:#b8a896;cursor:pointer;padding:4px;line-height:1}
+.zoek-rel{position:relative}
+.zoek-resultaat{padding:10px 20px 4px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:1.2px;color:#9b8f7f}
+.fab{position:fixed;bottom:24px;right:20px;width:52px;height:52px;border-radius:50%;background:#1a1a2e;color:#f5e6c8;border:none;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.25);z-index:200;-webkit-tap-highlight-color:transparent}
+.fab:active{background:#2d2d45}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:flex;align-items:flex-end}
+.modal{background:#faf7f2;border-radius:18px 18px 0 0;padding:20px 20px 36px;width:100%}
+.modal h3{font-family:'Fraunces',serif;font-size:18px;color:#1a1a2e;margin-bottom:14px}
+.modal-close{float:right;background:none;border:none;font-size:22px;color:#9b8f7f;cursor:pointer;line-height:1}
 
 .hr{height:1px;background:#e8dfd4;margin:10px 20px}
 .sectie-label-uit{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:1.5px;color:#c8a87a;padding:14px 20px 4px;display:block}
@@ -305,6 +318,7 @@ let gepakt      = laad('gepakt',      {});
 let uitgesloten = laad('uitgesloten', new Set());
 let extraItems  = laad('extra',       []);
 let altijdExtra = laad('altijdExtra', []);
+let zoekterm = '';
 let huidigScherm = 'lijst';
 
 function bewaar() {
@@ -378,62 +392,122 @@ function renderLijst() {
   const nietUitgesloten = alle.filter(i => !uitgesloten.has(i.id));
   const uitgesloteneItems = alle.filter(i => uitgesloten.has(i.id));
 
-  // Splits in nog-te-doen en afgetikte items
   const todoItems = nietUitgesloten.filter(i => !gepakt[i.id]);
   const doneItems = nietUitgesloten.filter(i => gepakt[i.id]);
 
   if (alle.length === 0) {
     el.innerHTML = `<div class="empty"><div class="ico">🎒</div><p>Stel je altijd-items in via <strong>⚙️ Altijd</strong><br>of kies iets via <strong>🎯 Categorieën</strong>.</p></div>`;
+    renderFab();
     return;
   }
 
-  // Groepeer alleen nog-te-doen items per categorie
-  const groepen = {};
-  todoItems.forEach(item => {
-    if (!groepen[item.cat]) groepen[item.cat] = [];
-    groepen[item.cat].push(item);
-  });
-
   let html = '';
 
-  CAT_ORDER.filter(c => groepen[c]).forEach(cat => {
-    const items = groepen[cat];
-    html += `<div class="cat-hdr"><span class="cat-name">${cat}</span><span class="badge">0/${items.length}</span></div>`;
-    items.forEach(item => { html += itemHtml(item, false, extraIds); });
-  });
+  // Zoekbalk
+  html += `<div class="zoek-wrap"><div class="zoek-rel">
+    <input class="zoek-inp" id="zoek-inp" placeholder="🔍  Zoek item..." value="${zoekterm.replace(/"/g,'&quot;')}">
+    ${zoekterm ? `<button class="zoek-clear" onclick="zoekWis()">×</button>` : ''}
+  </div></div>`;
 
-  // Afgetikte items helemaal onderaan
-  if (doneItems.length > 0) {
-    html += `<div class="hr"></div><span class="sectie-label-uit">✅ Ingepakt (${doneItems.length})</span>`;
-    doneItems.forEach(item => { html += itemHtml(item, false, extraIds); });
+  if (zoekterm) {
+    // Zoekresultaten — doorzoek alle items incl. done en uitgesloten
+    const q = zoekterm.toLowerCase();
+    const matches = alle.filter(i => i.naam.toLowerCase().includes(q));
+    html += `<span class="zoek-resultaat">${matches.length} resultaat${matches.length !== 1 ? 'en' : ''}</span>`;
+    matches.forEach(item => {
+      const isUit = uitgesloten.has(item.id);
+      html += itemHtml(item, isUit, extraIds);
+    });
+  } else {
+    // Sorteer items per categorie op alfabet (incl. custom items)
+    const sorteer = items => [...items].sort((a,b) => a.naam.localeCompare(b.naam, 'nl'));
+
+    // Groepeer todo items
+    const groepen = {};
+    todoItems.forEach(item => {
+      if (!groepen[item.cat]) groepen[item.cat] = [];
+      groepen[item.cat].push(item);
+    });
+
+    CAT_ORDER.filter(c => groepen[c]).forEach(cat => {
+      const items = sorteer(groepen[cat]);
+      html += `<div class="cat-hdr"><span class="cat-name">${cat}</span><span class="badge">0/${items.length}</span></div>`;
+      items.forEach(item => { html += itemHtml(item, false, extraIds); });
+    });
+
+    // Afgetikte items onderaan
+    if (doneItems.length > 0) {
+      html += `<div class="hr"></div><span class="sectie-label-uit">✅ Ingepakt (${doneItems.length})</span>`;
+      sorteer(doneItems).forEach(item => { html += itemHtml(item, false, extraIds); });
+    }
+
+    // Overgeslagen onderaan
+    if (uitgesloteneItems.length > 0) {
+      html += `<div class="hr"></div><span class="sectie-label-uit">⛔ Overgeslagen (${uitgesloteneItems.length})</span>`;
+      sorteer(uitgesloteneItems).forEach(item => { html += itemHtml(item, true, extraIds); });
+    }
   }
 
-  // Uitgesloten onderaan
-  if (uitgesloteneItems.length > 0) {
-    html += `<div class="hr"></div><span class="sectie-label-uit">⛔ Overgeslagen (${uitgesloteneItems.length})</span>`;
-    uitgesloteneItems.forEach(item => { html += itemHtml(item, true, extraIds); });
-  }
-
-  // Toevoegen
-  const catOpties = CAT_ORDER.map(c => `<option value="${c}">${c}</option>`).join('');
-  html += `
-    <div class="add-sec">
-      <span class="slabel" style="padding:0 0 8px">Iets toevoegen</span>
-      <select class="cat-sel" id="nieuw-cat">${catOpties}</select>
-      <div class="add-row">
-        <input class="add-inp" id="nieuw-naam" placeholder="Naam van item...">
-        <button class="add-btn" onclick="voegToe()">+</button>
-      </div>
-    </div>
-    <button class="reset-btn" onclick="resetAlles()">Opnieuw beginnen 🔄</button>`;
+  html += `<div style="height:80px"></div>`; // ruimte voor FAB
 
   el.innerHTML = html;
 
-  // Restore cat selectie
+  // Zoek input events
+  const zoekInp = document.getElementById('zoek-inp');
+  if (zoekInp) {
+    zoekInp.addEventListener('input', e => { zoekterm = e.target.value; render(); });
+    if (zoekterm) { zoekInp.focus(); zoekInp.setSelectionRange(9999,9999); }
+  }
+
+  renderFab();
+}
+
+function renderFab() {
+  // Verwijder bestaande FAB en modal
+  document.querySelectorAll('.fab,.modal-overlay').forEach(e => e.remove());
+
+  if (huidigScherm !== 'lijst') return;
+
+  const fab = document.createElement('button');
+  fab.className = 'fab';
+  fab.textContent = '+';
+  fab.onclick = toonModal;
+  document.body.appendChild(fab);
+}
+
+function toonModal() {
+  document.querySelectorAll('.modal-overlay').forEach(e => e.remove());
+  const catOpties = CAT_ORDER.map(c => `<option value="${c}">${c}</option>`).join('');
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <button class="modal-close" onclick="sluitModal()">×</button>
+      <h3>Item toevoegen</h3>
+      <select class="cat-sel" id="nieuw-cat">${catOpties}</select>
+      <div class="add-row">
+        <input class="add-inp" id="nieuw-naam" placeholder="Naam van item..." autofocus>
+        <button class="add-btn" onclick="voegToe()">+</button>
+      </div>
+    </div>`;
+  overlay.addEventListener('click', e => { if(e.target === overlay) sluitModal(); });
+  document.body.appendChild(overlay);
   const catSel = document.getElementById('nieuw-cat');
   if (catSel) catSel.value = window._nieuwCat || '🎒 Rest';
-  const naamInp = document.getElementById('nieuw-naam');
-  if (naamInp) naamInp.addEventListener('keydown', e => { if(e.key==='Enter') voegToe(); });
+  const inp = document.getElementById('nieuw-naam');
+  if (inp) {
+    inp.addEventListener('keydown', e => { if(e.key==='Enter') voegToe(); });
+    setTimeout(() => inp.focus(), 50);
+  }
+}
+
+function sluitModal() {
+  document.querySelectorAll('.modal-overlay').forEach(e => e.remove());
+}
+
+function zoekWis() {
+  zoekterm = '';
+  render();
 }
 
 function itemHtml(item, isUit, extraIds) {
@@ -532,6 +606,7 @@ function toonScherm(naam) {
   huidigScherm = naam;
   document.querySelectorAll('.scherm').forEach(s => s.classList.remove('actief'));
   document.getElementById('s-' + naam).classList.add('actief');
+  zoekterm = '';
   render();
 }
 
@@ -571,6 +646,7 @@ function voegToe() {
   window._nieuwCat = cat;
   if (!naam) return;
   extraItems.push({id: 'c_' + Date.now(), cat, naam});
+  sluitModal();
   render();
 }
 
