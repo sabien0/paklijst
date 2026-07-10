@@ -59,7 +59,7 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;min-height:100vh}
 .ia:active{color:#d4876a}
 .ia.del:active{color:#c04040}
 .ia.terugzet:active{color:#2d6a4f}
-.zoek-wrap{padding:10px 14px 4px;position:sticky;top:0;background:#faf7f2;z-index:50;border-bottom:1px solid #e8dfd4}
+.zoek-wrap{padding:10px 14px 4px;background:#faf7f2;border-bottom:1px solid #e8dfd4}
 .zoek-inp{width:100%;border:1.5px solid #e8dfd4;border-radius:9px;padding:10px 36px 10px 14px;font-family:'DM Sans',sans-serif;font-size:15px;color:#3a322a;background:#fff;outline:none;-webkit-appearance:none}
 .zoek-inp:focus{border-color:#c8a87a}
 .zoek-inp::placeholder{color:#b8a896}
@@ -123,13 +123,18 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;min-height:100vh}
     </div>
   </div>
 
-  <div id="zoek-sticky" style="display:none;position:sticky;top:var(--hdr-h,56px);z-index:90;background:#faf7f2;border-bottom:1px solid #e8dfd4;padding:8px 14px">
+  <div id="zoek-lijst" style="display:block;position:sticky;top:56px;z-index:90;background:#faf7f2;border-bottom:1px solid #e8dfd4;padding:8px 14px">
     <div class="zoek-rel">
-      <input class="zoek-inp" id="zoek-inp-sticky" placeholder="🔍  Zoek item...">
-      <button class="zoek-clear" id="zoek-clear-btn" style="display:none" onclick="zoekWis()">×</button>
+      <input class="zoek-inp" id="zoek-inp-lijst" placeholder="🔍  Zoek item...">
+      <button class="zoek-clear" id="zoek-clear-lijst" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;color:#b8a896;cursor:pointer;padding:4px" onclick="zoekWis()">×</button>
     </div>
   </div>
-  <div id="zoek-container" style="display:none"><div class="zoek-wrap"><div class="zoek-rel"><input class="zoek-inp" id="zoek-inp" placeholder="🔍  Zoek item..."><span id="zoek-clear" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;color:#b8a896;cursor:pointer;padding:4px" onclick="zoekWis()">×</span></div></div></div>
+  <div id="zoek-altijd" style="display:none;position:sticky;top:56px;z-index:90;background:#faf7f2;border-bottom:1px solid #e8dfd4;padding:8px 14px">
+    <div class="zoek-rel">
+      <input class="zoek-inp" id="zoek-inp-altijd" placeholder="🔍  Zoek in altijd-lijst...">
+      <button class="zoek-clear" id="zoek-clear-altijd" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;color:#b8a896;cursor:pointer;padding:4px" onclick="zoekWis()">×</button>
+    </div>
+  </div>
   <div id="s-lijst" class="scherm actief"></div>
   <div id="s-categorieen" class="scherm"></div>
   <div id="s-instellen" class="scherm"></div>
@@ -462,35 +467,12 @@ function renderLijstInhoud() {
 
 function renderFab() {
   document.querySelectorAll('.fab,.modal-overlay').forEach(e => e.remove());
-
   if (huidigScherm !== 'lijst' && huidigScherm !== 'instellen') return;
-
   const fab = document.createElement('button');
   fab.className = 'fab';
   fab.textContent = '+';
-  fab.onclick = huidigScherm === 'instellen' ? toonAltijdModal : toonModal;
+  fab.onclick = toonModal;
   document.body.appendChild(fab);
-
-  // Sticky zoekbalk tonen/verbergen
-  const zoekEl = document.getElementById('zoek-sticky');
-  if (zoekEl) {
-    if (huidigScherm === 'lijst') {
-      zoekEl.style.display = 'block';
-      const inp = document.getElementById('zoek-inp-sticky');
-      if (inp) {
-        inp.value = zoekterm;
-        inp.oninput = e => { zoekterm = e.target.value; updateZoekClear(); renderLijstInhoud(); };
-      }
-      updateZoekClear();
-    } else {
-      zoekEl.style.display = 'none';
-    }
-  }
-}
-
-function updateZoekClear() {
-  const btn = document.getElementById('zoek-clear-btn');
-  if (btn) btn.style.display = zoekterm ? 'block' : 'none';
 }
 
 function toonModal() {
@@ -526,13 +508,32 @@ function sluitModal() {
   document.querySelectorAll('.modal-overlay').forEach(e => e.remove());
 }
 
+
+function bindZoekInp() {
+  // Bind het juiste sticky invoerveld op basis van huidig scherm
+  const id = huidigScherm === 'instellen' ? 'zoek-inp-altijd' : 'zoek-inp-lijst';
+  const clearId = huidigScherm === 'instellen' ? 'zoek-clear-altijd' : 'zoek-clear-lijst';
+  const inp = document.getElementById(id);
+  const clr = document.getElementById(clearId);
+  if (!inp) return;
+  inp.value = zoekterm;
+  if (clr) clr.style.display = zoekterm ? 'block' : 'none';
+  inp.oninput = e => {
+    zoekterm = e.target.value;
+    if (clr) clr.style.display = zoekterm ? 'block' : 'none';
+    if (huidigScherm === 'instellen') renderInstellen();
+    else renderLijstInhoud();
+  };
+}
+
 function zoekWis() {
   zoekterm = '';
-  const zoekInp = document.getElementById('zoek-inp');
-  if (zoekInp) zoekInp.value = '';
-  const zc = document.getElementById('zoek-clear');
-  if (zc) zc.style.display = 'none';
-  renderLijst();
+  const inp = document.getElementById(huidigScherm === 'instellen' ? 'zoek-inp-altijd' : 'zoek-inp-lijst');
+  const clr = document.getElementById(huidigScherm === 'instellen' ? 'zoek-clear-altijd' : 'zoek-clear-lijst');
+  if (inp) inp.value = '';
+  if (clr) clr.style.display = 'none';
+  if (huidigScherm === 'instellen') renderInstellen();
+  else renderLijstInhoud();
 }
 
 function toggleAlles() {
@@ -613,8 +614,12 @@ function renderInstellen() {
       <button class="alles-btn" onclick="toggleAlles()">${alleAan ? 'Alles uit' : 'Alles aan'}</button>
     </div>`;
 
+  const q = zoekterm.toLowerCase();
   CAT_ORDER.filter(c => groepen[c]).forEach(cat => {
-    const items = [...groepen[cat]].sort((a,b) => a.naam.localeCompare(b.naam,'nl'));
+    const items = [...groepen[cat]]
+      .filter(i => !zoekterm || i.naam.toLowerCase().includes(q))
+      .sort((a,b) => a.naam.localeCompare(b.naam,'nl'));
+    if (!items.length) return;
     html += `<div class="inst-hdr"><span class="inst-cat-naam">${cat}</span></div>`;
     items.forEach(item => {
       const isCustom = item.id.startsWith('ca_');
@@ -632,6 +637,7 @@ function renderInstellen() {
 
   html += `<div style="height:80px"></div>`;
   el.innerHTML = html;
+  bindZoekInp();
   renderFab();
 }
 
@@ -641,8 +647,9 @@ function toonScherm(naam) {
   document.querySelectorAll('.scherm').forEach(s => s.classList.remove('actief'));
   document.getElementById('s-' + naam).classList.add('actief');
   zoekterm = '';
-  const zoekContainer = document.getElementById('zoek-container');
-  if (zoekContainer) zoekContainer.style.display = naam === 'lijst' ? 'block' : 'none';
+  // Toon juiste zoekbalk
+  document.getElementById('zoek-lijst').style.display = naam === 'lijst' ? 'block' : 'none';
+  document.getElementById('zoek-altijd').style.display = naam === 'instellen' ? 'block' : 'none';
   render();
 }
 
@@ -727,8 +734,6 @@ document.addEventListener('click', e => {
 });
 
 // ─── START ────────────────────────────────────────────────────────────────────
-const zoekContainer = document.getElementById('zoek-container');
-if (zoekContainer) zoekContainer.style.display = 'block';
 render();
 </script>
 </body>
