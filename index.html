@@ -123,13 +123,13 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;min-height:100vh}
     </div>
   </div>
 
-  <div id="zoek-lijst" style="display:block;position:sticky;top:56px;z-index:90;background:#faf7f2;border-bottom:1px solid #e8dfd4;padding:8px 14px">
+  <div id="zoek-lijst" style="display:block;position:sticky;top:0;z-index:90;background:#faf7f2;border-bottom:1px solid #e8dfd4;padding:8px 14px">
     <div class="zoek-rel">
       <input class="zoek-inp" id="zoek-inp-lijst" placeholder="🔍  Zoek item...">
       <button class="zoek-clear" id="zoek-clear-lijst" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;color:#b8a896;cursor:pointer;padding:4px" onclick="zoekWis()">×</button>
     </div>
   </div>
-  <div id="zoek-altijd" style="display:none;position:sticky;top:56px;z-index:90;background:#faf7f2;border-bottom:1px solid #e8dfd4;padding:8px 14px">
+  <div id="zoek-altijd" style="display:none;position:sticky;top:0;z-index:90;background:#faf7f2;border-bottom:1px solid #e8dfd4;padding:8px 14px">
     <div class="zoek-rel">
       <input class="zoek-inp" id="zoek-inp-altijd" placeholder="🔍  Zoek in altijd-lijst...">
       <button class="zoek-clear" id="zoek-clear-altijd" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;color:#b8a896;cursor:pointer;padding:4px" onclick="zoekWis()">×</button>
@@ -366,6 +366,7 @@ function berekenExtraIds() {
 function render() {
   bewaar();
   renderHeader();
+  if (typeof updateZoekTop === "function") updateZoekTop();
   if (huidigScherm === 'lijst') renderLijst();
   else if (huidigScherm === 'categorieen') renderCategorieen();
   else if (huidigScherm === 'instellen') renderInstellen();
@@ -734,7 +735,14 @@ document.addEventListener('click', e => {
 });
 
 // ─── START ────────────────────────────────────────────────────────────────────
+function updateZoekTop() {
+  const hdrH = document.querySelector('.hdr').offsetHeight;
+  document.getElementById('zoek-lijst').style.top = hdrH + 'px';
+  document.getElementById('zoek-altijd').style.top = hdrH + 'px';
+}
 render();
+updateZoekTop();
+window.addEventListener('resize', updateZoekTop);
 </script>
 </body>
 </html>
