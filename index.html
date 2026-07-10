@@ -68,6 +68,10 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;min-height:100vh}
 .zoek-resultaat{padding:10px 20px 4px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:1.2px;color:#9b8f7f}
 .fab{position:fixed;bottom:24px;right:20px;width:52px;height:52px;border-radius:50%;background:#1a1a2e;color:#f5e6c8;border:none;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.25);z-index:200;-webkit-tap-highlight-color:transparent}
 .fab:active{background:#2d2d45}
+.alles-btn{display:inline-block;background:transparent;border:1.5px solid #e8dfd4;border-radius:8px;padding:6px 12px;font-family:'DM Sans',sans-serif;font-size:12px;color:#7a6e64;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.alles-btn:active{background:#f0ebe2}
+.inst-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 4px}
+.inst-cat-naam{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:1.5px;color:#9b8f7f}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:flex;align-items:flex-end}
 .modal{background:#faf7f2;border-radius:18px 18px 0 0;padding:20px 20px 36px;width:100%}
 .modal h3{font-family:'Fraunces',serif;font-size:18px;color:#1a1a2e;margin-bottom:14px}
@@ -119,6 +123,13 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;min-height:100vh}
     </div>
   </div>
 
+  <div id="zoek-sticky" style="display:none;position:sticky;top:var(--hdr-h,56px);z-index:90;background:#faf7f2;border-bottom:1px solid #e8dfd4;padding:8px 14px">
+    <div class="zoek-rel">
+      <input class="zoek-inp" id="zoek-inp-sticky" placeholder="🔍  Zoek item...">
+      <button class="zoek-clear" id="zoek-clear-btn" style="display:none" onclick="zoekWis()">×</button>
+    </div>
+  </div>
+  <div id="zoek-container" style="display:none"><div class="zoek-wrap"><div class="zoek-rel"><input class="zoek-inp" id="zoek-inp" placeholder="🔍  Zoek item..."><span id="zoek-clear" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;color:#b8a896;cursor:pointer;padding:4px" onclick="zoekWis()">×</span></div></div></div>
   <div id="s-lijst" class="scherm actief"></div>
   <div id="s-categorieen" class="scherm"></div>
   <div id="s-instellen" class="scherm"></div>
@@ -386,6 +397,11 @@ function renderHeader() {
 }
 
 function renderLijst() {
+  renderLijstInhoud();
+  renderFab();
+}
+
+function renderLijstInhoud() {
   const el = document.getElementById('s-lijst');
   const alle = berekenZichtbaar();
   const extraIds = berekenExtraIds();
@@ -397,20 +413,12 @@ function renderLijst() {
 
   if (alle.length === 0) {
     el.innerHTML = `<div class="empty"><div class="ico">🎒</div><p>Stel je altijd-items in via <strong>⚙️ Altijd</strong><br>of kies iets via <strong>🎯 Categorieën</strong>.</p></div>`;
-    renderFab();
     return;
   }
 
   let html = '';
 
-  // Zoekbalk
-  html += `<div class="zoek-wrap"><div class="zoek-rel">
-    <input class="zoek-inp" id="zoek-inp" placeholder="🔍  Zoek item..." value="${zoekterm.replace(/"/g,'&quot;')}">
-    ${zoekterm ? `<button class="zoek-clear" onclick="zoekWis()">×</button>` : ''}
-  </div></div>`;
-
   if (zoekterm) {
-    // Zoekresultaten — doorzoek alle items incl. done en uitgesloten
     const q = zoekterm.toLowerCase();
     const matches = alle.filter(i => i.naam.toLowerCase().includes(q));
     html += `<span class="zoek-resultaat">${matches.length} resultaat${matches.length !== 1 ? 'en' : ''}</span>`;
@@ -448,46 +456,59 @@ function renderLijst() {
     }
   }
 
-  html += `<div style="height:80px"></div>`; // ruimte voor FAB
-
+  html += `<div style="height:80px"></div>`;
   el.innerHTML = html;
-
-  // Zoek input events
-  const zoekInp = document.getElementById('zoek-inp');
-  if (zoekInp) {
-    zoekInp.addEventListener('input', e => { zoekterm = e.target.value; render(); });
-    if (zoekterm) { zoekInp.focus(); zoekInp.setSelectionRange(9999,9999); }
-  }
-
-  renderFab();
 }
 
 function renderFab() {
-  // Verwijder bestaande FAB en modal
   document.querySelectorAll('.fab,.modal-overlay').forEach(e => e.remove());
 
-  if (huidigScherm !== 'lijst') return;
+  if (huidigScherm !== 'lijst' && huidigScherm !== 'instellen') return;
 
   const fab = document.createElement('button');
   fab.className = 'fab';
   fab.textContent = '+';
-  fab.onclick = toonModal;
+  fab.onclick = huidigScherm === 'instellen' ? toonAltijdModal : toonModal;
   document.body.appendChild(fab);
+
+  // Sticky zoekbalk tonen/verbergen
+  const zoekEl = document.getElementById('zoek-sticky');
+  if (zoekEl) {
+    if (huidigScherm === 'lijst') {
+      zoekEl.style.display = 'block';
+      const inp = document.getElementById('zoek-inp-sticky');
+      if (inp) {
+        inp.value = zoekterm;
+        inp.oninput = e => { zoekterm = e.target.value; updateZoekClear(); renderLijstInhoud(); };
+      }
+      updateZoekClear();
+    } else {
+      zoekEl.style.display = 'none';
+    }
+  }
+}
+
+function updateZoekClear() {
+  const btn = document.getElementById('zoek-clear-btn');
+  if (btn) btn.style.display = zoekterm ? 'block' : 'none';
 }
 
 function toonModal() {
   document.querySelectorAll('.modal-overlay').forEach(e => e.remove());
+  const isInstellen = huidigScherm === 'instellen';
+  const titel = isInstellen ? 'Item toevoegen aan altijd-lijst' : 'Item toevoegen';
+  const actie = isInstellen ? 'voegAltijdToe()' : 'voegToe()';
   const catOpties = CAT_ORDER.map(c => `<option value="${c}">${c}</option>`).join('');
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
     <div class="modal">
       <button class="modal-close" onclick="sluitModal()">×</button>
-      <h3>Item toevoegen</h3>
+      <h3>${titel}</h3>
       <select class="cat-sel" id="nieuw-cat">${catOpties}</select>
       <div class="add-row">
-        <input class="add-inp" id="nieuw-naam" placeholder="Naam van item..." autofocus>
-        <button class="add-btn" onclick="voegToe()">+</button>
+        <input class="add-inp" id="nieuw-naam" placeholder="Naam van item...">
+        <button class="add-btn" onclick="${actie}">+</button>
       </div>
     </div>`;
   overlay.addEventListener('click', e => { if(e.target === overlay) sluitModal(); });
@@ -496,7 +517,7 @@ function toonModal() {
   if (catSel) catSel.value = window._nieuwCat || '🎒 Rest';
   const inp = document.getElementById('nieuw-naam');
   if (inp) {
-    inp.addEventListener('keydown', e => { if(e.key==='Enter') voegToe(); });
+    inp.addEventListener('keydown', e => { if(e.key==='Enter') isInstellen ? voegAltijdToe() : voegToe(); });
     setTimeout(() => inp.focus(), 50);
   }
 }
@@ -507,6 +528,21 @@ function sluitModal() {
 
 function zoekWis() {
   zoekterm = '';
+  const zoekInp = document.getElementById('zoek-inp');
+  if (zoekInp) zoekInp.value = '';
+  const zc = document.getElementById('zoek-clear');
+  if (zc) zc.style.display = 'none';
+  renderLijst();
+}
+
+function toggleAlles() {
+  const alleIds = [...ITEMS.map(i => i.id), ...altijdExtra.map(i => i.id)];
+  const alleAan = alleIds.every(id => altijd.has(id));
+  if (alleAan) {
+    alleIds.forEach(id => altijd.delete(id));
+  } else {
+    alleIds.forEach(id => altijd.add(id));
+  }
   render();
 }
 
@@ -554,26 +590,37 @@ function renderCategorieen() {
 
 function renderInstellen() {
   const el = document.getElementById('s-instellen');
-  let html = `<span class="slabel">Wat staat er altijd op je lijst?</span>
-    <p class="inst-info">Deze items verschijnen altijd, ongeacht wat je gaat doen. Categorieën voegen daar extra items bovenop toe.</p>`;
 
   const groepen = {};
   ITEMS.forEach(item => {
     if (!groepen[item.cat]) groepen[item.cat] = [];
     groepen[item.cat].push(item);
   });
-
-  // Voeg ook altijd-extra items toe aan hun categorie
   altijdExtra.forEach(item => {
     if (!groepen[item.cat]) groepen[item.cat] = [];
     groepen[item.cat].push(item);
   });
 
+  const alleIds = [
+    ...ITEMS.map(i => i.id),
+    ...altijdExtra.map(i => i.id)
+  ];
+  const alleAan = alleIds.every(id => altijd.has(id));
+
+  let html = `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px 4px">
+      <span style="font-size:13px;color:#7a6e64">Items die altijd op je lijst staan</span>
+      <button class="alles-btn" onclick="toggleAlles()">${alleAan ? 'Alles uit' : 'Alles aan'}</button>
+    </div>`;
+
   CAT_ORDER.filter(c => groepen[c]).forEach(cat => {
-    html += `<span class="slabel" style="padding-top:12px">${cat}</span>`;
-    groepen[cat].forEach(item => {
+    const items = [...groepen[cat]].sort((a,b) => a.naam.localeCompare(b.naam,'nl'));
+    html += `<div class="inst-hdr"><span class="inst-cat-naam">${cat}</span></div>`;
+    items.forEach(item => {
       const isCustom = item.id.startsWith('ca_');
-      const delBtn = isCustom ? `<button class="ia del" style="margin-left:auto" onclick="verwijderAltijdExtra(event,'${item.id}')">×</button>` : '';
+      const delBtn = isCustom
+        ? `<button class="ia del" onclick="verwijderAltijdExtra(event,'${item.id}')">×</button>`
+        : '';
       html += `
         <div class="inst-item" onclick="toggleAltijd('${item.id}')">
           <div class="toggle${altijd.has(item.id)?' on':''}"><div class="knob"></div></div>
@@ -583,22 +630,9 @@ function renderInstellen() {
     });
   });
 
-  // Toevoegen onderaan
-  const catOpties = CAT_ORDER.map(c => `<option value="${c}">${c}</option>`).join('');
-  html += `
-    <div class="add-sec" style="margin-top:8px">
-      <span class="slabel" style="padding:0 0 8px;display:block">Item toevoegen aan altijd-lijst</span>
-      <select class="cat-sel" id="altijd-cat">${catOpties}</select>
-      <div class="add-row">
-        <input class="add-inp" id="altijd-naam" placeholder="Naam van item...">
-        <button class="add-btn" onclick="voegAltijdToe()">+</button>
-      </div>
-    </div>`;
-
+  html += `<div style="height:80px"></div>`;
   el.innerHTML = html;
-
-  const inp = document.getElementById('altijd-naam');
-  if (inp) inp.addEventListener('keydown', e => { if(e.key==='Enter') voegAltijdToe(); });
+  renderFab();
 }
 
 // ─── ACTIES ───────────────────────────────────────────────────────────────────
@@ -607,6 +641,8 @@ function toonScherm(naam) {
   document.querySelectorAll('.scherm').forEach(s => s.classList.remove('actief'));
   document.getElementById('s-' + naam).classList.add('actief');
   zoekterm = '';
+  const zoekContainer = document.getElementById('zoek-container');
+  if (zoekContainer) zoekContainer.style.display = naam === 'lijst' ? 'block' : 'none';
   render();
 }
 
@@ -657,12 +693,13 @@ function verwijder(e, id) {
 }
 
 function voegAltijdToe() {
-  const naam = document.getElementById('altijd-naam').value.trim();
-  const cat = document.getElementById('altijd-cat').value;
+  const naam = document.getElementById('nieuw-naam').value.trim();
+  const cat = document.getElementById('nieuw-cat').value;
   if (!naam) return;
   const id = 'ca_' + Date.now();
   altijdExtra.push({id, cat, naam});
   altijd.add(id);
+  sluitModal();
   render();
 }
 
@@ -690,6 +727,8 @@ document.addEventListener('click', e => {
 });
 
 // ─── START ────────────────────────────────────────────────────────────────────
+const zoekContainer = document.getElementById('zoek-container');
+if (zoekContainer) zoekContainer.style.display = 'block';
 render();
 </script>
 </body>
