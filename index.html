@@ -271,7 +271,7 @@ const ITEMS = [
   {id:"w3",cat:"💼 Werken",naam:"Oplader (Laptop)"},
 ];
 
-const EXTRA = {
+const EXTRA_DEFAULT = {
   hardlopen:     ["s4","s10","s6","s7","s9","s11","s12","s2"],
   mountainbiken: ["s2","s5","s3","s11","s10"],
   festival:      ["f1","f2","f3","f4","f5","f6","f7","f8","f9","f10","f11","f12","f13","f14","f15","t30"],
@@ -283,6 +283,21 @@ const EXTRA = {
   zwemmen:       ["s1","s9","s11","t30"],
   kamperen:      ["ka1","ka2","ka3","ka4","ka5","ka6","ka7","ka8","ka9","ka10","ka11","ka12","ka13"],
   makeuppen:     ["m1","m2","m3","m4","m5","m6"],
+};
+
+// Broncategorie per activiteit/bestemming (voor het aanpassen van welke items erbij horen)
+const ACT_BRON_CAT = {
+  hardlopen:     "🏅 Sportdingen",
+  mountainbiken: "🏅 Sportdingen",
+  zwemmen:       "🏅 Sportdingen",
+  festival:      "🎪 Festival",
+  werken:        "💼 Werken",
+  harfsen:       "🏡 Harfsen",
+  almere:        "🏙️ Almere",
+  buitenland:    "✈️ Buitenland",
+  skien:         "⛷️ Skiën",
+  kamperen:      "🏕️ Kamperen",
+  makeuppen:     "💄 Makeup",
 };
 
 const ACTIVITEITEN = [
@@ -337,8 +352,10 @@ let gepakt      = laad('gepakt',      {});
 let uitgesloten = laad('uitgesloten', new Set());
 let extraItems  = laad('extra',       []);
 let altijdExtra = laad('altijdExtra', []);
+let activiteitItems = laad('activiteitItems', JSON.parse(JSON.stringify(EXTRA_DEFAULT)));
 let zoekterm = '';
 let huidigScherm = 'lijst';
+let openActiviteit = null;
 
 function bewaar() {
   sla('altijd', altijd);
@@ -347,21 +364,39 @@ function bewaar() {
   sla('uitgesloten', uitgesloten);
   sla('extra', extraItems);
   sla('altijdExtra', altijdExtra);
+  sla('activiteitItems', activiteitItems);
 }
 
 // ─── BEREKENINGEN ─────────────────────────────────────────────────────────────
+// Categorieën die bij een activiteit of bestemming horen.
+// Items hieruit komen alleen op de lijst als de bijbehorende activiteit/bestemming aan staat.
+const ACTIVITEIT_CATS = new Set([
+  "🏅 Sportdingen","⛷️ Skiën","🎪 Festival","🏕️ Kamperen","💼 Werken",
+  "🏙️ Almere","✈️ Buitenland","🏡 Harfsen","💄 Makeup"
+]);
+function catVanId(id) {
+  const item = ITEM_MAP[id] || altijdExtra.find(i => i.id === id);
+  return item ? item.cat : null;
+}
 function berekenZichtbaar() {
-  const ids = new Set(altijd);
-  actief.forEach(a => (EXTRA[a] || []).forEach(id => ids.add(id)));
+  const ids = new Set();
+  // Altijd-items, maar sla activiteit-/bestemming-gebonden categorieën over
+  altijd.forEach(id => {
+    const cat = catVanId(id);
+    if (cat && ACTIVITEIT_CATS.has(cat)) return; // alleen via actieve activiteit
+    ids.add(id);
+  });
+  // Items van actieve activiteiten/bestemmingen
+  actief.forEach(a => (activiteitItems[a] || []).forEach(id => ids.add(id)));
   const items = [...ids].map(id => ITEM_MAP[id]).filter(Boolean);
-  // Voeg altijdExtra toe die in altijd staan
-  const altijdExtraActief = altijdExtra.filter(i => altijd.has(i.id));
+  // Voeg altijdExtra toe die zichtbaar mogen zijn
+  const altijdExtraActief = altijdExtra.filter(i => ids.has(i.id));
   return [...items, ...altijdExtraActief, ...extraItems];
 }
 
 function berekenExtraIds() {
   const extra = new Set();
-  actief.forEach(a => (EXTRA[a]||[]).forEach(id => { if (!altijd.has(id)) extra.add(id); }));
+  actief.forEach(a => (activiteitItems[a]||[]).forEach(id => { if (!altijd.has(id)) extra.add(id); }));
   return extra;
 }
 
@@ -541,7 +576,9 @@ function zoekWis() {
 }
 
 function toggleAlles() {
-  const alleIds = [...ITEMS.map(i => i.id), ...altijdExtra.map(i => i.id)];
+  const alleIds = [...ITEMS, ...altijdExtra]
+    .filter(i => !ACTIVITEIT_CATS.has(i.cat))
+    .map(i => i.id);
   const alleAan = alleIds.every(id => altijd.has(id));
   if (alleAan) {
     alleIds.forEach(id => altijd.delete(id));
@@ -606,10 +643,9 @@ function renderInstellen() {
     groepen[item.cat].push(item);
   });
 
-  const alleIds = [
-    ...ITEMS.map(i => i.id),
-    ...altijdExtra.map(i => i.id)
-  ];
+  const alleIds = [...ITEMS, ...altijdExtra]
+    .filter(i => !ACTIVITEIT_CATS.has(i.cat))
+    .map(i => i.id);
   const alleAan = alleIds.every(id => altijd.has(id));
 
   let html = `
@@ -619,7 +655,7 @@ function renderInstellen() {
     </div>`;
 
   const q = zoekterm.toLowerCase();
-  CAT_ORDER.filter(c => groepen[c]).forEach(cat => {
+  CAT_ORDER.filter(c => groepen[c] && !ACTIVITEIT_CATS.has(c)).forEach(cat => {
     const items = [...groepen[cat]]
       .filter(i => !zoekterm || i.naam.toLowerCase().includes(q))
       .sort((a,b) => a.naam.localeCompare(b.naam,'nl'));
@@ -639,10 +675,74 @@ function renderInstellen() {
     });
   });
 
+  // ─── Activiteit- & bestemming-items aanpassen ───
+  html += `<div class="hr"></div>`;
+  html += `<div style="padding:14px 20px 4px">
+      <span style="font-size:13px;color:#7a6e64">Tik op een activiteit of bestemming om aan te passen welke items erbij horen. Deze verschijnen alleen op je lijst als je ze bij <strong>🎯 Categorieën</strong> aanzet.</span>
+    </div>`;
+
+  ACTIVITEITEN.forEach(a => {
+    const bronCat = ACT_BRON_CAT[a.id];
+    const gekozen = activiteitItems[a.id] || [];
+    const open = openActiviteit === a.id;
+    html += `
+      <div class="inst-item" onclick="toggleActiviteitOpen('${a.id}')" style="${open?'background:#f0ebe2':''}">
+        <span style="font-size:18px;flex-shrink:0">${a.emoji}</span>
+        <span class="inst-naam">${a.label}</span>
+        <span class="badge">${gekozen.length}</span>
+        <span style="color:#9b8f7f;font-size:12px;margin-left:4px">${open?'▲':'▼'}</span>
+      </div>`;
+    if (open) {
+      const catItems = ITEMS
+        .filter(i => i.cat === bronCat)
+        .sort((x,y) => x.naam.localeCompare(y.naam,'nl'));
+      catItems.forEach(item => {
+        const aan = gekozen.includes(item.id);
+        html += `
+          <div class="inst-item" style="padding-left:44px;background:#faf7f2" onclick="toggleActiviteitItem(event,'${a.id}','${item.id}')">
+            <div class="toggle${aan?' on':''}"><div class="knob"></div></div>
+            <span class="inst-naam">${item.naam}</span>
+          </div>`;
+      });
+      // Cross-categorie extra's: items die erbij horen maar uit een andere categorie komen
+      const extraIds = gekozen.filter(id => {
+        const it = ITEM_MAP[id];
+        return it && it.cat !== bronCat;
+      }).map(id => ITEM_MAP[id])
+        .sort((x,y) => x.naam.localeCompare(y.naam,'nl'));
+      if (extraIds.length) {
+        html += `<div style="padding:8px 20px 2px 44px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:#c8a87a">Extra uit andere categorieën</div>`;
+        extraIds.forEach(item => {
+          html += `
+            <div class="inst-item" style="padding-left:44px;background:#faf7f2" onclick="toggleActiviteitItem(event,'${a.id}','${item.id}')">
+              <div class="toggle on"><div class="knob"></div></div>
+              <span class="inst-naam">${item.naam} <span style="color:#b8a896;font-size:12px">${item.cat}</span></span>
+            </div>`;
+        });
+      }
+    }
+  });
+
   html += `<div style="height:80px"></div>`;
   el.innerHTML = html;
   bindZoekInp();
   renderFab();
+}
+
+function toggleActiviteitOpen(id) {
+  openActiviteit = openActiviteit === id ? null : id;
+  renderInstellen();
+}
+
+function toggleActiviteitItem(e, act, id) {
+  e.stopPropagation();
+  if (!activiteitItems[act]) activiteitItems[act] = [];
+  const arr = activiteitItems[act];
+  const idx = arr.indexOf(id);
+  if (idx >= 0) arr.splice(idx, 1);
+  else arr.push(id);
+  bewaar();
+  renderInstellen();
 }
 
 // ─── ACTIES ───────────────────────────────────────────────────────────────────
