@@ -614,8 +614,10 @@ function renderCategorieen() {
   const acts = ACTIVITEITEN.filter(a => a.groep === 'Activiteit');
 
   const btnHtml = arr => arr.map(a =>
-    `<button class="act-btn${actief.includes(a.id)?' on':''}" onclick="toggleActief('${a.id}')">
-      <span>${a.emoji}</span><span>${a.label}</span>
+    `<button class="act-btn${actief.includes(a.id)?' on':''}" onclick="toggleActief('${a.id}')" style="position:relative">
+      <span>${a.emoji}</span><span style="flex:1">${a.label}</span>
+      <span onclick="toggleActiviteitOpen(event,'${a.id}')" title="Items aanpassen"
+        style="font-size:15px;opacity:.7;padding:2px 4px;margin:-2px -4px;border-radius:6px">${openActiviteit===a.id?'▲':'✏️'}</span>
     </button>`).join('');
 
   const wisBtn = actief.length > 0
@@ -627,7 +629,51 @@ function renderCategorieen() {
     <div class="act-grid">${btnHtml(plaatsen)}</div>
     <div class="groep-label" style="padding-top:10px">🎯 Activiteit</div>
     <div class="act-grid" style="padding-bottom:8px">${btnHtml(acts)}</div>
+    ${openActiviteit ? renderActiviteitEditor(openActiviteit) : ''}
     ${wisBtn}`;
+}
+
+function renderActiviteitEditor(actId) {
+  const a = ACTIVITEITEN.find(x => x.id === actId);
+  if (!a) return '';
+  const bronCat = ACT_BRON_CAT[actId];
+  const gekozen = activiteitItems[actId] || [];
+
+  let html = `<div class="hr"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px 4px">
+      <span style="font-size:13px;color:#7a6e64">${a.emoji} ${a.label} — welke items horen erbij?</span>
+      <button class="alles-btn" onclick="toggleActiviteitOpen(event,'${actId}')">Sluiten ✕</button>
+    </div>`;
+
+  const catItems = ITEMS
+    .filter(i => i.cat === bronCat)
+    .sort((x,y) => x.naam.localeCompare(y.naam,'nl'));
+  catItems.forEach(item => {
+    const aan = gekozen.includes(item.id);
+    html += `
+      <div class="inst-item" onclick="toggleActiviteitItem(event,'${actId}','${item.id}')">
+        <div class="toggle${aan?' on':''}"><div class="knob"></div></div>
+        <span class="inst-naam">${item.naam}</span>
+      </div>`;
+  });
+
+  // Cross-categorie extra's: items die erbij horen maar uit een andere categorie komen
+  const extraIds = gekozen.filter(id => {
+    const it = ITEM_MAP[id];
+    return it && it.cat !== bronCat;
+  }).map(id => ITEM_MAP[id])
+    .sort((x,y) => x.naam.localeCompare(y.naam,'nl'));
+  if (extraIds.length) {
+    html += `<div style="padding:8px 20px 2px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:#c8a87a">Extra uit andere categorieën</div>`;
+    extraIds.forEach(item => {
+      html += `
+        <div class="inst-item" onclick="toggleActiviteitItem(event,'${actId}','${item.id}')">
+          <div class="toggle on"><div class="knob"></div></div>
+          <span class="inst-naam">${item.naam} <span style="color:#b8a896;font-size:12px">${item.cat}</span></span>
+        </div>`;
+    });
+  }
+  return html;
 }
 
 function renderInstellen() {
@@ -675,63 +721,16 @@ function renderInstellen() {
     });
   });
 
-  // ─── Activiteit- & bestemming-items aanpassen ───
-  html += `<div class="hr"></div>`;
-  html += `<div style="padding:14px 20px 4px">
-      <span style="font-size:13px;color:#7a6e64">Tik op een activiteit of bestemming om aan te passen welke items erbij horen. Deze verschijnen alleen op je lijst als je ze bij <strong>🎯 Categorieën</strong> aanzet.</span>
-    </div>`;
-
-  ACTIVITEITEN.forEach(a => {
-    const bronCat = ACT_BRON_CAT[a.id];
-    const gekozen = activiteitItems[a.id] || [];
-    const open = openActiviteit === a.id;
-    html += `
-      <div class="inst-item" onclick="toggleActiviteitOpen('${a.id}')" style="${open?'background:#f0ebe2':''}">
-        <span style="font-size:18px;flex-shrink:0">${a.emoji}</span>
-        <span class="inst-naam">${a.label}</span>
-        <span class="badge">${gekozen.length}</span>
-        <span style="color:#9b8f7f;font-size:12px;margin-left:4px">${open?'▲':'▼'}</span>
-      </div>`;
-    if (open) {
-      const catItems = ITEMS
-        .filter(i => i.cat === bronCat)
-        .sort((x,y) => x.naam.localeCompare(y.naam,'nl'));
-      catItems.forEach(item => {
-        const aan = gekozen.includes(item.id);
-        html += `
-          <div class="inst-item" style="padding-left:44px;background:#faf7f2" onclick="toggleActiviteitItem(event,'${a.id}','${item.id}')">
-            <div class="toggle${aan?' on':''}"><div class="knob"></div></div>
-            <span class="inst-naam">${item.naam}</span>
-          </div>`;
-      });
-      // Cross-categorie extra's: items die erbij horen maar uit een andere categorie komen
-      const extraIds = gekozen.filter(id => {
-        const it = ITEM_MAP[id];
-        return it && it.cat !== bronCat;
-      }).map(id => ITEM_MAP[id])
-        .sort((x,y) => x.naam.localeCompare(y.naam,'nl'));
-      if (extraIds.length) {
-        html += `<div style="padding:8px 20px 2px 44px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:#c8a87a">Extra uit andere categorieën</div>`;
-        extraIds.forEach(item => {
-          html += `
-            <div class="inst-item" style="padding-left:44px;background:#faf7f2" onclick="toggleActiviteitItem(event,'${a.id}','${item.id}')">
-              <div class="toggle on"><div class="knob"></div></div>
-              <span class="inst-naam">${item.naam} <span style="color:#b8a896;font-size:12px">${item.cat}</span></span>
-            </div>`;
-        });
-      }
-    }
-  });
-
   html += `<div style="height:80px"></div>`;
   el.innerHTML = html;
   bindZoekInp();
   renderFab();
 }
 
-function toggleActiviteitOpen(id) {
+function toggleActiviteitOpen(e, id) {
+  if (e) e.stopPropagation();
   openActiviteit = openActiviteit === id ? null : id;
-  renderInstellen();
+  renderCategorieen();
 }
 
 function toggleActiviteitItem(e, act, id) {
@@ -742,12 +741,13 @@ function toggleActiviteitItem(e, act, id) {
   if (idx >= 0) arr.splice(idx, 1);
   else arr.push(id);
   bewaar();
-  renderInstellen();
+  renderCategorieen();
 }
 
 // ─── ACTIES ───────────────────────────────────────────────────────────────────
 function toonScherm(naam) {
   huidigScherm = naam;
+  openActiviteit = null;
   document.querySelectorAll('.scherm').forEach(s => s.classList.remove('actief'));
   document.getElementById('s-' + naam).classList.add('actief');
   zoekterm = '';
