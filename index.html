@@ -719,6 +719,8 @@ function verwijderAltijdExtra(e, id) {
 }
 
 function resetAlles() {
+  if (!confirm('Opnieuw beginnen met pakken?')) return;
+
   gepakt = {};
   uitgesloten = new Set();
   actief = [];
