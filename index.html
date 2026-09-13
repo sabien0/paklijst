@@ -326,6 +326,8 @@ let uitgesloten = laad('uitgesloten', new Set());
 let extraItems  = laad('extra',       []);
 let altijdExtra = laad('altijdExtra', []);
 let activiteitItems = laad('activiteitItems', JSON.parse(JSON.stringify(EXTRA_DEFAULT)));
+let activiteitExtra = laad('activiteitExtra', []);
+activiteitExtra.forEach(item => { ITEM_MAP[item.id] = item; });
 let verwijderd  = laad('verwijderd',  new Set());
 let zoekterm = '';
 let huidigScherm = 'lijst';
@@ -338,6 +340,7 @@ function bewaar() {
   sla('extra', extraItems);
   sla('altijdExtra', altijdExtra);
   sla('activiteitItems', activiteitItems);
+  sla('activiteitExtra', activiteitExtra);
   sla('verwijderd', verwijderd);
 }
 // ─── BEREKENINGEN ─────────────────────────────────────────────────────────────
@@ -348,7 +351,7 @@ const ACTIVITEIT_CATS = new Set([
   "🏙️ Almere","✈️ Buitenland","🏡 Harfsen","💄 Makeup"
 ]);
 function catVanId(id) {
-  const item = ITEM_MAP[id] || altijdExtra.find(i => i.id === id);
+  const item = ITEM_MAP[id] || altijdExtra.find(i => i.id === id) || activiteitExtra.find(i => i.id === id);
   return item ? item.cat : null;
 }
 function berekenZichtbaar() {
@@ -580,42 +583,44 @@ function renderCategorieen() {
 function renderActiviteitEditor(actId) {
   const a = ACTIVITEITEN.find(x => x.id === actId);
   if (!a) return '';
-  const bronCat = ACT_BRON_CAT[actId];
   const gekozen = activiteitItems[actId] || [];
+  const items = gekozen
+    .map(id => ITEM_MAP[id])
+    .filter(item => item && !verwijderd.has(item.id))
+    .sort((x,y) => x.naam.localeCompare(y.naam, 'nl'));
+
   let html = `<div class="hr"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px 4px">
-      <span style="font-size:13px;color:#7a6e64">${a.emoji} ${a.label} — welke items horen erbij?</span>
+      <span style="font-size:13px;color:#7a6e64">${a.emoji} ${a.label}: items bewerken</span>
       <button class="alles-btn" onclick="toggleActiviteitOpen(event,'${actId}')">Sluiten ✕</button>
     </div>`;
-  const catItems = ITEMS
-    .filter(i => i.cat === bronCat && !verwijderd.has(i.id))
-    .sort((x,y) => x.naam.localeCompare(y.naam,'nl'));
-  catItems.forEach(item => {
-    const aan = gekozen.includes(item.id);
+
+  if (!items.length) {
+    html += `<p class="inst-info" style="padding-top:10px">Deze lijst is leeg. Voeg hieronder een item toe.</p>`;
+  }
+
+  items.forEach(item => {
+    const andereCategorie = item.cat !== ACT_BRON_CAT[actId]
+      ? ` <span style="color:#b8a896;font-size:12px">${item.cat}</span>`
+      : '';
     html += `
-      <div class="inst-item" onclick="toggleActiviteitItem(event,'${actId}','${item.id}')">
-        <div class="toggle${aan?' on':''}"><div class="knob"></div></div>
-        <span class="inst-naam">${item.naam}</span>
+      <div class="inst-item">
+        <span class="inst-naam">${item.naam}${andereCategorie}</span>
+        <button class="ia del" title="Verwijderen" onclick="verwijderActiviteitItem(event,'${actId}','${item.id}')">×</button>
       </div>`;
   });
-  // Cross-categorie extra's: items die erbij horen maar uit een andere categorie komen
-  const extraIds = gekozen.filter(id => {
-    const it = ITEM_MAP[id];
-    return it && it.cat !== bronCat && !verwijderd.has(id);
-  }).map(id => ITEM_MAP[id])
-    .sort((x,y) => x.naam.localeCompare(y.naam,'nl'));
-  if (extraIds.length) {
-    html += `<div style="padding:8px 20px 2px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:#c8a87a">Extra uit andere categorieën</div>`;
-    extraIds.forEach(item => {
-      html += `
-        <div class="inst-item" onclick="toggleActiviteitItem(event,'${actId}','${item.id}')">
-          <div class="toggle on"><div class="knob"></div></div>
-          <span class="inst-naam">${item.naam} <span style="color:#b8a896;font-size:12px">${item.cat}</span></span>
-        </div>`;
-    });
-  }
+
+  html += `
+    <div class="add-sec">
+      <div class="add-row">
+        <input id="nieuw-act-item" class="add-inp" placeholder="Item toevoegen..."
+          onkeydown="if(event.key==='Enter'){event.preventDefault();voegActiviteitItemToe('${actId}')} ">
+        <button class="add-btn" title="Toevoegen" onclick="voegActiviteitItemToe('${actId}')">+</button>
+      </div>
+    </div>`;
   return html;
 }
+
 function renderInstellen() {
   const el = document.getElementById('s-instellen');
   const groepen = {};
@@ -668,15 +673,59 @@ function toggleActiviteitOpen(e, id) {
   openActiviteit = openActiviteit === id ? null : id;
   renderCategorieen();
 }
-function toggleActiviteitItem(e, act, id) {
-  e.stopPropagation();
-  if (!activiteitItems[act]) activiteitItems[act] = [];
-  const arr = activiteitItems[act];
-  const idx = arr.indexOf(id);
-  if (idx >= 0) arr.splice(idx, 1);
-  else arr.push(id);
+function verwijderActiviteitItem(e, act, id) {
+  if (e) e.stopPropagation();
+  if (!activiteitItems[act]) return;
+  activiteitItems[act] = activiteitItems[act].filter(itemId => itemId !== id);
+
+  // Ruim een zelf toegevoegd item alleen op als geen andere lijst het meer gebruikt.
+  if (id.startsWith('act_')) {
+    const nogInGebruik = Object.values(activiteitItems).some(ids => ids.includes(id));
+    if (!nogInGebruik) {
+      activiteitExtra = activiteitExtra.filter(item => item.id !== id);
+      delete ITEM_MAP[id];
+      delete gepakt[id];
+      uitgesloten.delete(id);
+    }
+  }
   bewaar();
   renderCategorieen();
+}
+
+function voegActiviteitItemToe(act) {
+  const inp = document.getElementById('nieuw-act-item');
+  if (!inp) return;
+  const naam = inp.value.trim();
+  if (!naam) {
+    inp.focus();
+    return;
+  }
+
+  const cat = ACT_BRON_CAT[act];
+  const bestaand = [...ITEMS, ...activiteitExtra].find(item =>
+    item.cat === cat && item.naam.localeCompare(naam, 'nl', {sensitivity:'base'}) === 0
+  );
+
+  let id;
+  if (bestaand) {
+    id = bestaand.id;
+  } else {
+    id = 'act_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+    const item = {id, cat, naam};
+    activiteitExtra.push(item);
+    ITEM_MAP[id] = item;
+  }
+
+  if (!activiteitItems[act]) activiteitItems[act] = [];
+  if (!activiteitItems[act].includes(id)) activiteitItems[act].push(id);
+
+  inp.value = '';
+  bewaar();
+  renderCategorieen();
+  setTimeout(() => {
+    const nieuwVeld = document.getElementById('nieuw-act-item');
+    if (nieuwVeld) nieuwVeld.focus();
+  }, 0);
 }
 // ─── ACTIES ───────────────────────────────────────────────────────────────────
 function toonScherm(naam) {
