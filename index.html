@@ -266,7 +266,7 @@ const EXTRA_DEFAULT = {
   makeuppen:     ["m1","m2","m3","m4","m5","m6"],
 };
 // Broncategorie per activiteit/bestemming (voor het aanpassen van welke items erbij horen)
-const ACT_BRON_CAT = {
+let ACT_BRON_CAT = laad('actBronCat', {
   hardlopen:     "🏅 Sportdingen",
   mountainbiken: "🏅 Sportdingen",
   zwemmen:       "🏅 Sportdingen",
@@ -278,8 +278,8 @@ const ACT_BRON_CAT = {
   skien:         "⛷️ Skiën",
   kamperen:      "🏕️ Kamperen",
   makeuppen:     "💄 Makeup",
-};
-const ACTIVITEITEN = [
+});
+let ACTIVITEITEN = laad('activiteiten', [
   {id:"almere",label:"Almere",emoji:"🏙️",groep:"Bestemming"},
   {id:"buitenland",label:"Buitenland",emoji:"✈️",groep:"Bestemming"},
   {id:"harfsen",label:"Harfsen",emoji:"🏡",groep:"Bestemming"},
@@ -291,12 +291,12 @@ const ACTIVITEITEN = [
   {id:"skien",label:"Skiën",emoji:"⛷️",groep:"Activiteit"},
   {id:"werken",label:"Werken",emoji:"💼",groep:"Activiteit"},
   {id:"zwemmen",label:"Zwemmen",emoji:"🏊",groep:"Activiteit"},
-];
-const CAT_ORDER = [
+]);
+let CAT_ORDER = laad('catOrder', [
   "👗 Kleding","📱 Electronica","🎒 Rest","🧴 Toiletartikelen","💄 Makeup",
   "🍎 Eten & drinken","🏅 Sportdingen","⛷️ Skiën","🎪 Festival","🏕️ Kamperen","💼 Werken",
   "🏙️ Almere","✈️ Buitenland","🏡 Harfsen",
-];
+]);
 const DEFAULT_ALTIJD = ["e4","e5","e6","e7","e8","e9","k1","k3","k6","k7",
   "t3","t4","t5","t6","t8","t9","t10","t11","t13","t15","t16","t17","t18",
   "t19","t20","t21","t22","t24","t25","t26","t27","t28","t29","t30",
@@ -341,15 +341,17 @@ function bewaar() {
   sla('altijdExtra', altijdExtra);
   sla('activiteitItems', activiteitItems);
   sla('activiteitExtra', activiteitExtra);
+  sla('activiteiten', ACTIVITEITEN);
+  sla('catOrder', CAT_ORDER);
+  sla('actBronCat', ACT_BRON_CAT);
   sla('verwijderd', verwijderd);
 }
 // ─── BEREKENINGEN ─────────────────────────────────────────────────────────────
 // Categorieën die bij een activiteit of bestemming horen.
 // Items hieruit komen alleen op de lijst als de bijbehorende activiteit/bestemming aan staat.
-const ACTIVITEIT_CATS = new Set([
-  "🏅 Sportdingen","⛷️ Skiën","🎪 Festival","🏕️ Kamperen","💼 Werken",
-  "🏙️ Almere","✈️ Buitenland","🏡 Harfsen","💄 Makeup"
-]);
+function isActiviteitCat(cat) {
+  return Object.values(ACT_BRON_CAT).includes(cat);
+}
 function catVanId(id) {
   const item = ITEM_MAP[id] || altijdExtra.find(i => i.id === id) || activiteitExtra.find(i => i.id === id);
   return item ? item.cat : null;
@@ -360,7 +362,7 @@ function berekenZichtbaar() {
   altijd.forEach(id => {
     if (verwijderd.has(id)) return; // permanent verwijderd
     const cat = catVanId(id);
-    if (cat && ACTIVITEIT_CATS.has(cat)) return; // alleen via actieve activiteit
+    if (cat && isActiviteitCat(cat)) return; // alleen via actieve activiteit
     ids.add(id);
   });
   // Items van actieve activiteiten/bestemmingen
@@ -477,7 +479,7 @@ function toonModal() {
   const isInstellen = huidigScherm === 'instellen';
   const titel = isInstellen ? 'Item toevoegen aan altijd-lijst' : 'Item toevoegen';
   const actie = isInstellen ? 'voegAltijdToe()' : 'voegToe()';
-  const catOpties = CAT_ORDER.map(c => `<option value="${c}">${c}</option>`).join('');
+  const catOpties = CAT_ORDER.map(c => `<option value="${veiligeTekst(c)}">${veiligeTekst(c)}</option>`).join('');
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
@@ -502,6 +504,124 @@ function toonModal() {
 }
 function sluitModal() {
   document.querySelectorAll('.modal-overlay').forEach(e => e.remove());
+}
+
+function veiligeTekst(tekst) {
+  return String(tekst).replace(/[&<>'"]/g, teken => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'
+  })[teken]);
+}
+function maakId(naam) {
+  const basis = naam.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || 'nieuw';
+  let id = basis;
+  let teller = 2;
+  while (ACTIVITEITEN.some(a => a.id === id)) id = basis + '-' + teller++;
+  return id;
+}
+function toonGroepModal(groep) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <button class="modal-close" onclick="sluitModal()">×</button>
+      <h3>Nieuwe ${groep.toLowerCase()}</h3>
+      <div class="add-row" style="margin-bottom:8px">
+        <input class="add-inp" id="groep-emoji" placeholder="Emoji" maxlength="4" style="max-width:80px">
+        <input class="add-inp" id="groep-naam" placeholder="Naam...">
+      </div>
+      <button class="reset-btn" style="margin:0;width:100%;color:#f5e6c8;background:#1a1a2e;border-color:#1a1a2e" onclick="voegGroepToe('${groep}')">Toevoegen</button>
+    </div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) sluitModal(); });
+  document.body.appendChild(overlay);
+  const inp = document.getElementById('groep-naam');
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') voegGroepToe(groep); });
+  setTimeout(() => inp.focus(), 50);
+}
+function voegGroepToe(groep) {
+  const naam = document.getElementById('groep-naam').value.trim();
+  const emoji = document.getElementById('groep-emoji').value.trim() || (groep === 'Bestemming' ? '📍' : '🎯');
+  if (!naam) return;
+  if (ACTIVITEITEN.some(a => a.label.localeCompare(naam, 'nl', {sensitivity:'base'}) === 0)) {
+    alert('Deze naam bestaat al.');
+    return;
+  }
+  const id = maakId(naam);
+  const cat = emoji + ' ' + naam;
+  ACTIVITEITEN.push({id, label:naam, emoji, groep});
+  ACT_BRON_CAT[id] = cat;
+  activiteitItems[id] = [];
+  if (!CAT_ORDER.includes(cat)) CAT_ORDER.push(cat);
+  sluitModal();
+  render();
+}
+function verwijderGroep(e, id) {
+  if (e) e.stopPropagation();
+  const groep = ACTIVITEITEN.find(a => a.id === id);
+  if (!groep) return;
+  if (!confirm(`"${groep.label}" verwijderen? De bijbehorende categorie en items blijven bestaan totdat je die apart verwijdert.`)) return;
+  ACTIVITEITEN = ACTIVITEITEN.filter(a => a.id !== id);
+  actief = actief.filter(actId => actId !== id);
+  delete activiteitItems[id];
+  delete ACT_BRON_CAT[id];
+  if (openActiviteit === id) openActiviteit = null;
+  render();
+}
+function toonCategorieModal() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <button class="modal-close" onclick="sluitModal()">×</button>
+      <h3>Nieuwe categorie</h3>
+      <div class="add-row" style="margin-bottom:8px">
+        <input class="add-inp" id="cat-emoji" placeholder="Emoji" maxlength="4" style="max-width:80px">
+        <input class="add-inp" id="cat-naam" placeholder="Naam...">
+      </div>
+      <button class="reset-btn" style="margin:0;width:100%;color:#f5e6c8;background:#1a1a2e;border-color:#1a1a2e" onclick="voegCategorieToe()">Toevoegen</button>
+    </div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) sluitModal(); });
+  document.body.appendChild(overlay);
+  const inp = document.getElementById('cat-naam');
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') voegCategorieToe(); });
+  setTimeout(() => inp.focus(), 50);
+}
+function voegCategorieToe() {
+  const naam = document.getElementById('cat-naam').value.trim();
+  const emoji = document.getElementById('cat-emoji').value.trim() || '📦';
+  if (!naam) return;
+  const cat = emoji + ' ' + naam;
+  if (CAT_ORDER.some(c => c.replace(/^\S+\s*/, '').localeCompare(naam, 'nl', {sensitivity:'base'}) === 0)) {
+    alert('Deze categorie bestaat al.');
+    return;
+  }
+  CAT_ORDER.push(cat);
+  sluitModal();
+  render();
+}
+function verwijderCategorie(e, cat) {
+  if (e) e.stopPropagation();
+  const gekoppeld = ACTIVITEITEN.filter(a => ACT_BRON_CAT[a.id] === cat);
+  const ids = [...ITEMS, ...altijdExtra, ...activiteitExtra, ...extraItems]
+    .filter(item => item.cat === cat).map(item => item.id);
+  const melding = gekoppeld.length
+    ? `Deze categorie is gekoppeld aan ${gekoppeld.map(a => a.label).join(', ')}. Verwijder eerst die activiteit of bestemming.`
+    : `"${cat}" verwijderen? ${ids.length ? 'Alle items in deze categorie worden ook verwijderd.' : ''}`;
+  if (gekoppeld.length) { alert(melding); return; }
+  if (!confirm(melding)) return;
+  const idSet = new Set(ids);
+  ITEMS.filter(item => idSet.has(item.id)).forEach(item => verwijderd.add(item.id));
+  altijdExtra = altijdExtra.filter(item => !idSet.has(item.id));
+  activiteitExtra = activiteitExtra.filter(item => !idSet.has(item.id));
+  extraItems = extraItems.filter(item => !idSet.has(item.id));
+  idSet.forEach(id => {
+    altijd.delete(id); uitgesloten.delete(id); delete gepakt[id]; delete ITEM_MAP[id];
+  });
+  Object.keys(activiteitItems).forEach(act => {
+    activiteitItems[act] = (activiteitItems[act] || []).filter(id => !idSet.has(id));
+  });
+  CAT_ORDER = CAT_ORDER.filter(c => c !== cat);
+  render();
 }
 function bindZoekInp() {
   // Bind het juiste sticky invoerveld op basis van huidig scherm
@@ -530,7 +650,7 @@ function zoekWis() {
 }
 function toggleAlles() {
   const alleIds = [...ITEMS, ...altijdExtra]
-    .filter(i => !ACTIVITEIT_CATS.has(i.cat) && !verwijderd.has(i.id))
+    .filter(i => !isActiviteitCat(i.cat) && !verwijderd.has(i.id))
     .map(i => i.id);
   const alleAan = alleIds.every(id => altijd.has(id));
   if (alleAan) {
@@ -564,60 +684,61 @@ function renderCategorieen() {
   const plaatsen = ACTIVITEITEN.filter(a => a.groep === 'Bestemming');
   const acts = ACTIVITEITEN.filter(a => a.groep === 'Activiteit');
   const btnHtml = arr => arr.map(a =>
-    `<button class="act-btn${actief.includes(a.id)?' on':''}" onclick="toggleActief('${a.id}')" style="position:relative">
-      <span>${a.emoji}</span><span style="flex:1">${a.label}</span>
-      <span onclick="toggleActiviteitOpen(event,'${a.id}')" title="Items aanpassen"
-        style="font-size:15px;opacity:.7;padding:2px 4px;margin:-2px -4px;border-radius:6px">${openActiviteit===a.id?'▲':'✏️'}</span>
-    </button>`).join('');
+    `<div style="display:flex;gap:5px;align-items:stretch">
+      <button class="act-btn${actief.includes(a.id)?' on':''}" onclick="toggleActief('${a.id}')" style="position:relative;flex:1;min-width:0">
+        <span>${veiligeTekst(a.emoji)}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis">${veiligeTekst(a.label)}</span>
+        <span onclick="toggleActiviteitOpen(event,'${a.id}')" title="Items aanpassen"
+          style="font-size:15px;opacity:.7;padding:2px 4px;margin:-2px -4px;border-radius:6px">${openActiviteit===a.id?'▲':'✏️'}</span>
+      </button>
+      <button class="ia del" title="Verwijderen" onclick="verwijderGroep(event,'${a.id}')" style="align-self:center">×</button>
+    </div>`).join('');
   const wisBtn = actief.length > 0
     ? `<div style="padding:12px 14px 0"><button class="reset-btn" style="margin:0;width:100%" onclick="wisSelectie()">Selectie wissen ✕</button></div>`
     : '';
+  const categorieHtml = CAT_ORDER.map(cat => `
+    <div class="inst-item">
+      <span class="inst-naam">${veiligeTekst(cat)}</span>
+      <button class="ia del" title="Categorie verwijderen" onclick="verwijderCategorie(event,'${cat.replace(/'/g, "\\'")}')">×</button>
+    </div>`).join('');
   el.innerHTML = `
     <div class="groep-label">📍 Bestemming</div>
     <div class="act-grid">${btnHtml(plaatsen)}</div>
-    <div class="groep-label" style="padding-top:10px">🎯 Activiteit</div>
-    <div class="act-grid" style="padding-bottom:8px">${btnHtml(acts)}</div>
+    <div style="padding:8px 14px 2px"><button class="reset-btn" style="margin:0;width:100%" onclick="toonGroepModal('Bestemming')">+ Nieuwe bestemming</button></div>
+    <div class="groep-label" style="padding-top:14px">🎯 Activiteit</div>
+    <div class="act-grid" style="padding-bottom:4px">${btnHtml(acts)}</div>
+    <div style="padding:8px 14px 2px"><button class="reset-btn" style="margin:0;width:100%" onclick="toonGroepModal('Activiteit')">+ Nieuwe activiteit</button></div>
     ${openActiviteit ? renderActiviteitEditor(openActiviteit) : ''}
-    ${wisBtn}`;
+    ${wisBtn}
+    <div class="hr" style="margin-top:18px"></div>
+    <div class="groep-label">📚 Lijstcategorieën</div>
+    <p class="inst-info">Beheer hier de categorieën waarin items worden opgeslagen.</p>
+    ${categorieHtml}
+    <div style="padding:8px 14px 20px"><button class="reset-btn" style="margin:0;width:100%" onclick="toonCategorieModal()">+ Nieuwe categorie</button></div>`;
 }
+
 function renderActiviteitEditor(actId) {
   const a = ACTIVITEITEN.find(x => x.id === actId);
   if (!a) return '';
   const gekozen = activiteitItems[actId] || [];
-  const items = gekozen
-    .map(id => ITEM_MAP[id])
-    .filter(item => item && !verwijderd.has(item.id))
+  const items = gekozen.map(id => ITEM_MAP[id]).filter(item => item && !verwijderd.has(item.id))
     .sort((x,y) => x.naam.localeCompare(y.naam, 'nl'));
-
   let html = `<div class="hr"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px 4px">
-      <span style="font-size:13px;color:#7a6e64">${a.emoji} ${a.label}: items bewerken</span>
+      <span style="font-size:13px;color:#7a6e64">${veiligeTekst(a.emoji)} ${veiligeTekst(a.label)}: items bewerken</span>
       <button class="alles-btn" onclick="toggleActiviteitOpen(event,'${actId}')">Sluiten ✕</button>
     </div>`;
-
-  if (!items.length) {
-    html += `<p class="inst-info" style="padding-top:10px">Deze lijst is leeg. Voeg hieronder een item toe.</p>`;
-  }
-
+  if (!items.length) html += `<p class="inst-info" style="padding-top:10px">Deze lijst is leeg. Voeg hieronder een item toe.</p>`;
   items.forEach(item => {
-    const andereCategorie = item.cat !== ACT_BRON_CAT[actId]
-      ? ` <span style="color:#b8a896;font-size:12px">${item.cat}</span>`
-      : '';
-    html += `
-      <div class="inst-item">
-        <span class="inst-naam">${item.naam}${andereCategorie}</span>
-        <button class="ia del" title="Verwijderen" onclick="verwijderActiviteitItem(event,'${actId}','${item.id}')">×</button>
-      </div>`;
-  });
-
-  html += `
-    <div class="add-sec">
-      <div class="add-row">
-        <input id="nieuw-act-item" class="add-inp" placeholder="Item toevoegen..."
-          onkeydown="if(event.key==='Enter'){event.preventDefault();voegActiviteitItemToe('${actId}')} ">
-        <button class="add-btn" title="Toevoegen" onclick="voegActiviteitItemToe('${actId}')">+</button>
-      </div>
+    html += `<div class="inst-item">
+      <span class="inst-naam">${veiligeTekst(item.naam)}</span>
+      <button class="ia del" title="Verwijderen" onclick="verwijderActiviteitItem(event,'${actId}','${item.id}')">×</button>
     </div>`;
+  });
+  html += `<div class="add-sec"><div class="add-row">
+    <input id="nieuw-act-item" class="add-inp" placeholder="Item toevoegen..."
+      onkeydown="if(event.key==='Enter'){event.preventDefault();voegActiviteitItemToe('${actId}')} ">
+    <button class="add-btn" title="Toevoegen" onclick="voegActiviteitItemToe('${actId}')">+</button>
+  </div></div>`;
   return html;
 }
 
@@ -635,7 +756,7 @@ function renderInstellen() {
     groepen[item.cat].push(item);
   });
   const alleIds = [...ITEMS, ...altijdExtra]
-    .filter(i => !ACTIVITEIT_CATS.has(i.cat) && !verwijderd.has(i.id))
+    .filter(i => !isActiviteitCat(i.cat) && !verwijderd.has(i.id))
     .map(i => i.id);
   const alleAan = alleIds.every(id => altijd.has(id));
   let html = `
@@ -644,7 +765,7 @@ function renderInstellen() {
       <button class="alles-btn" onclick="toggleAlles()">${alleAan ? 'Alles uit' : 'Alles aan'}</button>
     </div>`;
   const q = zoekterm.toLowerCase();
-  CAT_ORDER.filter(c => groepen[c] && !ACTIVITEIT_CATS.has(c)).forEach(cat => {
+  CAT_ORDER.filter(c => groepen[c] && !isActiviteitCat(c)).forEach(cat => {
     const items = [...groepen[cat]]
       .filter(i => !zoekterm || i.naam.toLowerCase().includes(q))
       .sort((a,b) => a.naam.localeCompare(b.naam,'nl'));
@@ -677,56 +798,38 @@ function verwijderActiviteitItem(e, act, id) {
   if (e) e.stopPropagation();
   if (!activiteitItems[act]) return;
   activiteitItems[act] = activiteitItems[act].filter(itemId => itemId !== id);
-
-  // Ruim een zelf toegevoegd item alleen op als geen andere lijst het meer gebruikt.
   if (id.startsWith('act_')) {
     const nogInGebruik = Object.values(activiteitItems).some(ids => ids.includes(id));
     if (!nogInGebruik) {
       activiteitExtra = activiteitExtra.filter(item => item.id !== id);
-      delete ITEM_MAP[id];
-      delete gepakt[id];
-      uitgesloten.delete(id);
+      delete ITEM_MAP[id]; delete gepakt[id]; uitgesloten.delete(id);
     }
   }
   bewaar();
   renderCategorieen();
 }
-
 function voegActiviteitItemToe(act) {
   const inp = document.getElementById('nieuw-act-item');
   if (!inp) return;
   const naam = inp.value.trim();
-  if (!naam) {
-    inp.focus();
-    return;
-  }
-
+  if (!naam) { inp.focus(); return; }
   const cat = ACT_BRON_CAT[act];
   const bestaand = [...ITEMS, ...activiteitExtra].find(item =>
-    item.cat === cat && item.naam.localeCompare(naam, 'nl', {sensitivity:'base'}) === 0
-  );
-
+    item.cat === cat && item.naam.localeCompare(naam, 'nl', {sensitivity:'base'}) === 0);
   let id;
-  if (bestaand) {
-    id = bestaand.id;
-  } else {
-    id = 'act_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+  if (bestaand) id = bestaand.id;
+  else {
+    id = 'act_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
     const item = {id, cat, naam};
-    activiteitExtra.push(item);
-    ITEM_MAP[id] = item;
+    activiteitExtra.push(item); ITEM_MAP[id] = item;
   }
-
   if (!activiteitItems[act]) activiteitItems[act] = [];
   if (!activiteitItems[act].includes(id)) activiteitItems[act].push(id);
-
   inp.value = '';
-  bewaar();
-  renderCategorieen();
-  setTimeout(() => {
-    const nieuwVeld = document.getElementById('nieuw-act-item');
-    if (nieuwVeld) nieuwVeld.focus();
-  }, 0);
+  bewaar(); renderCategorieen();
+  setTimeout(() => { const veld = document.getElementById('nieuw-act-item'); if (veld) veld.focus(); }, 0);
 }
+
 // ─── ACTIES ───────────────────────────────────────────────────────────────────
 function toonScherm(naam) {
   huidigScherm = naam;
