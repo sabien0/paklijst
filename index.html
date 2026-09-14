@@ -98,7 +98,10 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;min-height:100vh}
   <div class="hdr">
     <div style="display:flex;justify-content:space-between;align-items:center;">
       <h1>Paklijst ✈️</h1>
-      <button onclick="resetAlles()" title="Paklijst resetten" style="background:none;border:none;color:#f5e6c8;font-size:22px;cursor:pointer;padding:4px 0;line-height:1;-webkit-tap-highlight-color:transparent;">↺</button>
+      <div style="display:flex;align-items:center;gap:12px">
+        <button onclick="resetAlles()" title="Opnieuw beginnen met inpakken" style="background:none;border:none;color:#f5e6c8;font-size:22px;cursor:pointer;padding:4px 0;line-height:1;-webkit-tap-highlight-color:transparent;">↺</button>
+        <button onclick="toonInstellingen()" title="Instellingen" style="background:none;border:none;color:#f5e6c8;font-size:21px;cursor:pointer;padding:4px 0;line-height:1;-webkit-tap-highlight-color:transparent;">⚙️</button>
+      </div>
     </div>
     <div id="prog-wrap" class="prog-wrap" style="display:none">
       <div id="prog-fill" class="prog-fill" style="width:0%"></div>
@@ -107,7 +110,6 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;min-height:100vh}
     <div class="tabs">
       <button class="tab on" onclick="toonScherm('lijst')">🎒 Lijst</button>
       <button class="tab" id="tab-cat" onclick="toonScherm('categorieen')">🎯 Categorieën</button>
-      <button class="tab" onclick="toonScherm('instellen')">⚙️ Altijd</button>
     </div>
   </div>
   <div id="zoek-lijst" style="display:block;position:sticky;top:0;z-index:90;background:#faf7f2;border-bottom:1px solid #e8dfd4;padding:8px 14px">
@@ -409,7 +411,7 @@ function renderHeader() {
   tabCat.textContent = '🎯 Categorieën' + (actief.length > 0 ? ` (${actief.length})` : '');
   // Actieve tab highlight
   document.querySelectorAll('.tab').forEach((t,i) => {
-    const namen = ['lijst','categorieen','instellen'];
+    const namen = ['lijst','categorieen'];
     t.classList.toggle('on', namen[i] === huidigScherm);
   });
 }
@@ -426,7 +428,7 @@ function renderLijstInhoud() {
   const todoItems = nietUitgesloten.filter(i => !gepakt[i.id]);
   const doneItems = nietUitgesloten.filter(i => gepakt[i.id]);
   if (alle.length === 0) {
-    el.innerHTML = `<div class="empty"><div class="ico">🎒</div><p>Stel je altijd-items in via <strong>⚙️ Altijd</strong><br>of kies iets via <strong>🎯 Categorieën</strong>.</p></div>`;
+    el.innerHTML = `<div class="empty"><div class="ico">🎒</div><p>Stel je altijd-items in via het <strong>⚙️ tandwiel</strong><br>of kies iets via <strong>🎯 Categorieën</strong>.</p></div>`;
     return;
   }
   let html = '';
@@ -741,7 +743,6 @@ function renderInstellen() {
         <button class="act-btn" style="width:100%;padding:15px 14px" onclick="openInstelling('activiteiten')"><span>🎯</span><span style="flex:1">Activiteiten aanpassen</span><span>›</span></button>
         <button class="act-btn" style="width:100%;padding:15px 14px" onclick="openInstelling('bestemmingen')"><span>📍</span><span style="flex:1">Bestemmingen aanpassen</span><span>›</span></button>
         <button class="act-btn" style="width:100%;padding:15px 14px" onclick="openInstelling('categorieen')"><span>📚</span><span style="flex:1">Lijstcategorieën aanpassen</span><span>›</span></button>
-        <button class="act-btn" style="width:100%;padding:15px 14px;color:#b05a4c" onclick="resetAlles()"><span>↺</span><span style="flex:1">Opnieuw beginnen met inpakken</span></button>
       </div>`;
     return;
   }
@@ -853,6 +854,17 @@ function voegActiviteitItemToe(act) {
 }
 
 // ─── ACTIES ───────────────────────────────────────────────────────────────────
+function toonInstellingen() {
+  instellingSectie = null;
+  huidigScherm = 'instellen';
+  openActiviteit = null;
+  zoekterm = '';
+  document.querySelectorAll('.scherm').forEach(s => s.classList.remove('actief'));
+  document.getElementById('s-instellen').classList.add('actief');
+  document.getElementById('zoek-lijst').style.display = 'none';
+  document.getElementById('zoek-altijd').style.display = 'none';
+  render();
+}
 function toonScherm(naam) {
   huidigScherm = naam;
   openActiviteit = null;
@@ -861,7 +873,7 @@ function toonScherm(naam) {
   zoekterm = '';
   // Toon juiste zoekbalk
   document.getElementById('zoek-lijst').style.display = naam === 'lijst' ? 'block' : 'none';
-  document.getElementById('zoek-altijd').style.display = naam === 'instellen' ? 'block' : 'none';
+  document.getElementById('zoek-altijd').style.display = 'none';
   render();
 }
 function toggleGepakt(id) {
