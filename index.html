@@ -102,6 +102,11 @@ details.blok[open] summary:after{transform:rotate(90deg)}
 .switch input:checked + .sl{background:var(--accent)}
 .switch input:checked + .sl:after{transform:translateX(16px)}
 .switch .tx{flex:1}.switch .tx small{display:block;color:var(--muted);font-size:12px}
+.meer{display:flex;align-items:center;gap:10px;width:100%;margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 12px;text-align:left}
+.meer span{flex:1;min-width:0;font-weight:500;font-size:14px}
+.meer small{display:block;font-weight:400;color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meer i{font-style:normal;color:var(--muted);transition:transform .2s}
+.meer.open i{transform:rotate(90deg)}
 .opt-row{padding:12px 0;border-top:1px solid var(--line)}
 /* sheet */
 .ov{position:fixed;inset:0;background:rgba(15,15,12,.5);z-index:50;display:flex;align-items:flex-end;justify-content:center;animation:fade .15s}
@@ -508,7 +513,8 @@ function tekenSheet(){
       .map(g => `<button class="chip${d.groepen.includes(g.id) ? ' on' : ''}" data-a="edGroep" data-x="${g.id}">${esc(g.emoji)} ${esc(g.naam)}</button>`).join('');
     body = `<span class="lbl">Naam</span><input id="ed-naam" data-i="ed" data-k="naam" value="${esc(d.naam)}" placeholder="Bijv. Zwembrilletje">
       <span class="lbl">Categorie</span><select data-i="ed" data-k="cat">${catOpties(d.cat)}</select>
-      <div style="margin-top:10px">${swHTML('altijd', d.altijd, '⭐ Altijd mee', 'Staat op elke paklijst')}</div>
+      <button class="meer${sheet.meer ? ' open' : ''}" data-a="edMeer"><span>⚙ Instellingen<small>${esc(itemSamenvatting(d))}</small></span><i>›</i></button>
+      ${sheet.meer ? `<div style="margin-top:4px">${swHTML('altijd', d.altijd, '⭐ Altijd mee', 'Staat op elke paklijst')}</div>
       <span class="lbl">Of alleen mee bij…</span>
       <div class="chips wrapc">${gChips('b')}</div><div class="chips wrapc" style="margin-top:6px">${gChips('a')}</div>
       <div style="margin-top:10px">${swHTML('laatst', d.laatst, '🌅 Laatste moment', 'Pak je pas op de dag zelf in')}</div>
@@ -517,7 +523,7 @@ function tekenSheet(){
         ${[[0,'Eén keer (geen aantal)'],[1,'1 per dag'],[2,'1 per 2 dagen'],[3,'1 per 3 dagen']].map(([v, l]) => `<option value="${v}"${d.perDagen === v ? ' selected' : ''}>${l}</option>`).join('')}
       </select>${d.perDagen ? `<input type="number" min="0" inputmode="numeric" data-i="ed" data-k="max" value="${d.max || ''}" placeholder="max" style="width:80px;flex:none;padding:10px 12px;border-radius:12px;font-size:15px">` : ''}</div>
       ${d.perDagen ? `<p class="info">Bij 4 nachten (5 dagen) neem je er ${Math.min(Math.ceil(5 / d.perDagen), d.max || 99)} mee.</p>` : ''}
-      ${sheet.nieuw ? '' : `<button class="btn ghost danger block" style="margin-top:18px" data-a="edWeg">Item verwijderen</button>`}`;
+      ${sheet.nieuw ? '' : `<button class="btn ghost danger block" style="margin-top:18px" data-a="edWeg">Item verwijderen</button>`}` : ''}`;
     voet = `<button class="btn" data-a="sluit">Annuleren</button><button class="btn pri" data-a="edOpslaan">${sheet.nieuw ? 'Toevoegen' : 'Opslaan'}</button>`;
   }
   else if (sheet.type === 'toevoegen'){
@@ -559,6 +565,10 @@ function tekenSheet(){
   $('sheet-root').innerHTML = `<div class="ov" data-a="ovSluit"><div class="sheet"><div class="handle"></div>
     <div class="sh"><h2>${titel}</h2><button class="ic" data-a="sluit" title="Sluiten">✕</button></div>
     <div class="sb">${body}</div>${voet ? `<div class="sf">${voet}</div>` : ''}</div></div>`;
+}
+function itemSamenvatting(d){
+  return [d.altijd ? '⭐ altijd mee' : '', ...d.groepen.map(groep).filter(Boolean).map(g => g.emoji + ' ' + g.naam), d.laatst ? '🌅 laatste moment' : '',
+    d.perDagen ? (d.perDagen === 1 ? '1 per dag' : `1 per ${d.perDagen} dagen`) : ''].filter(Boolean).join(' · ') || 'Alleen als je het zelf toevoegt';
 }
 function suggHTML(){
   const q = (sheet?.naam || '').trim().toLowerCase(); if (!q) return '';
@@ -628,6 +638,7 @@ const A = {
     const d = {id:'i_' + nid(), naam:zoek.trim(), cat:standaardCat(), altijd:filter === 'altijd', groepen: groep(filter) ? [filter] : [], laatst:filter === 'laatst', perDagen:0, max:0};
     openSheet({type:'item', nieuw:true, d}); setTimeout(() => $('ed-naam')?.focus(), 60);
   },
+  edMeer(){ sheet.meer = !sheet.meer; tekenSheet(); },
   edGroep(id){ const d = sheet.d; d.groepen = d.groepen.includes(id) ? d.groepen.filter(g => g !== id) : [...d.groepen, id]; tekenSheet(); },
   edOpslaan(){
     const d = sheet.d; d.naam = d.naam.trim();
